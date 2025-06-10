@@ -149,35 +149,88 @@ this.saveToStorage();
     return { ...this.tasks[taskIndex] };
   }
 
-  async rescheduleDependent(taskId, newStartDate, newEndDate) {
+async rescheduleDependent(taskId, newStartDate, newEndDate) {
     await delay(300);
     
-    const dependentTasks = this.tasks.filter(task => 
-      task.dependencies && task.dependencies.includes(taskId)
-    );
-
-    for (const dependentTask of dependentTasks) {
-      const taskStartDate = new Date(dependentTask.startDate || dependentTask.dueDate);
-      const taskEndDate = new Date(dependentTask.dueDate || dependentTask.startDate);
-      const taskDuration = Math.max(1, Math.ceil((taskEndDate - taskStartDate) / (24 * 60 * 60 * 1000)) + 1);
+    const rescheduledTasks = [];
+    const errors = [];
+    
+    const processTask = async (parentTaskId, parentEndDate, depth = 0) => {
+      // Prevent infinite recursion
+      if (depth > 10) {
+        errors.push(`Maximum dependency depth exceeded for task ${parentTaskId}`);
+        return;
+      }
       
-      // Schedule dependent task to start after parent task ends
-      const newDependentStartDate = new Date(newEndDate);
-      newDependentStartDate.setDate(newDependentStartDate.getDate() + 1);
-      
-      const newDependentEndDate = new Date(newDependentStartDate);
-      newDependentEndDate.setDate(newDependentEndDate.getDate() + taskDuration - 1);
+      const dependentTasks = this.tasks.filter(task => 
+        task.dependencies && task.dependencies.includes(parentTaskId)
+      );
 
-      await this.update(dependentTask.id, {
-        startDate: newDependentStartDate.toISOString(),
-        dueDate: newDependentEndDate.toISOString()
-      });
+      for (const dependentTask of dependentTasks) {
+        try {
+          // Calculate task duration
+          const taskStartDate = new Date(dependentTask.startDate || dependentTask.dueDate);
+          const taskEndDate = new Date(dependentTask.dueDate || dependentTask.startDate);
+          const taskDuration = Math.max(1, Math.ceil((taskEndDate - taskStartDate) / (24 * 60 * 60 * 1000)) + 1);
+          
+          // Schedule dependent task to start after parent task ends
+          const newDependentStartDate = new Date(parentEndDate);
+          newDependentStartDate.setDate(newDependentStartDate.getDate() + 1);
+          
+          const newDependentEndDate = new Date(newDependentStartDate);
+          newDependentEndDate.setDate(newDependentEndDate.getDate() + taskDuration - 1);
 
-      // Recursively reschedule tasks dependent on this one
-      await this.rescheduleDependent(dependentTask.id, newDependentStartDate, newDependentEndDate);
+          // Validate the new dates don't conflict with other constraints
+          if (dependentTask.constraints) {
+            const maxStartDate = dependentTask.constraints.maxStartDate ? new Date(dependentTask.constraints.maxStartDate) : null;
+            const maxEndDate = dependentTask.constraints.maxEndDate ? new Date(dependentTask.constraints.maxEndDate) : null;
+            
+            if (maxStartDate && newDependentStartDate > maxStartDate) {
+              errors.push(`Task ${dependentTask.title} cannot start after ${maxStartDate.toDateString()}`);
+              continue;
+            }
+            
+            if (maxEndDate && newDependentEndDate > maxEndDate) {
+              errors.push(`Task ${dependentTask.title} cannot end after ${maxEndDate.toDateString()}`);
+              continue;
+            }
+          }
+
+          // Update the task
+          await this.update(dependentTask.id, {
+            startDate: newDependentStartDate.toISOString(),
+            dueDate: newDependentEndDate.toISOString()
+          });
+
+          rescheduledTasks.push({
+            id: dependentTask.id,
+            title: dependentTask.title,
+            oldStart: taskStartDate,
+            newStart: newDependentStartDate,
+            oldEnd: taskEndDate,
+            newEnd: newDependentEndDate
+          });
+
+          // Recursively reschedule tasks dependent on this one
+          await processTask(dependentTask.id, newDependentEndDate, depth + 1);
+          
+        } catch (error) {
+          errors.push(`Failed to reschedule ${dependentTask.title}: ${error.message}`);
+        }
+      }
+    };
+
+    await processTask(taskId, newEndDate);
+
+    if (errors.length > 0) {
+      throw new Error(`Rescheduling completed with errors: ${errors.join('; ')}`);
     }
 
-    return true;
+    return {
+      success: true,
+      rescheduledTasks,
+      message: `Successfully rescheduled ${rescheduledTasks.length} dependent tasks`
+    };
   }
 
   async updateDependencies(taskId, dependencies) {

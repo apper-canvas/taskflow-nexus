@@ -15,7 +15,7 @@ const [currentDate, setCurrentDate] = useState(new Date());
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [isCreatingDependency, setIsCreatingDependency] = useState(false);
     const [dependencySource, setDependencySource] = useState(null);
-    const [tooltip, setTooltip] = useState({ task: null, visible: false, x: 0, y: 0 });
+const [tooltip, setTooltip] = useState({ task: null, visible: false, x: 0, y: 0 });
     const [filters, setFilters] = useState({
         priority: 'all',
         status: 'all',
@@ -24,6 +24,9 @@ const [currentDate, setCurrentDate] = useState(new Date());
         showDeadlines: true
     });
     const [sortBy, setSortBy] = useState('startDate'); // startDate, priority, title
+    const [autoReschedule, setAutoReschedule] = useState(true); // Setting for automatic rescheduling
+    const [dependencyPreview, setDependencyPreview] = useState([]); // Tasks affected by rescheduling
+    const [isRescheduling, setIsRescheduling] = useState(false);
     const timelineRef = useRef(null);
     // Calculate timeline range based on zoom level
     const timelineRange = useMemo(() => {
@@ -182,9 +185,43 @@ setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysTo
                 y: rect.top - 10
             });
         } else {
-            setTooltip({ task: null, visible: false, x: 0, y: 0 });
+setTooltip({ task: null, visible: false, x: 0, y: 0 });
         }
     }, []);
+
+    // Calculate dependency preview for rescheduling
+    const calculateDependencyPreview = useCallback((taskId, newStartDate, newEndDate) => {
+        if (!autoReschedule) return [];
+        const affectedTasks = [];
+        const processTask = (id, parentStartDate, parentEndDate) => {
+            const dependentTasks = tasks.filter(task => 
+                task.dependencies && task.dependencies.includes(id)
+            );
+            
+            dependentTasks.forEach(depTask => {
+                const taskDuration = depTask.dueDate && depTask.startDate ? 
+                    Math.max(1, Math.ceil((new Date(depTask.dueDate) - new Date(depTask.startDate)) / (24 * 60 * 60 * 1000)) + 1) : 1;
+                
+                const newDepStartDate = new Date(parentEndDate);
+                newDepStartDate.setDate(newDepStartDate.getDate() + 1);
+                
+                const newDepEndDate = new Date(newDepStartDate);
+                newDepEndDate.setDate(newDepEndDate.getDate() + taskDuration - 1);
+                
+                affectedTasks.push({
+                    ...depTask,
+                    newStartDate: newDepStartDate,
+                    newEndDate: newDepEndDate
+                });
+                
+                // Recursively process dependent tasks
+                processTask(depTask.id, newDepStartDate, newDepEndDate);
+            });
+        };
+        
+        processTask(taskId, newStartDate, newEndDate);
+        return affectedTasks;
+    }, [tasks, autoReschedule]);
 
     // Handle task drag start
     const handleDragStart = (e, task) => {
@@ -198,19 +235,32 @@ setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysTo
         setDragOffset({
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
-});
-        e.dataTransfer.effectAllowed = 'move';
+        });
+e.dataTransfer.effectAllowed = 'move';
     };
 
-    // Handle task drag over timeline
+    // Handle task drag over timeline with preview
     const handleDragOver = (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
+        
+        if (draggedTask && autoReschedule && timelineRef.current) {
+            const timelineRect = timelineRef.current.getBoundingClientRect();
+            const dropX = e.clientX - timelineRect.left - dragOffset.x;
+            const dayIndex = Math.round(dropX / dayWidth);
+            const newStartDate = addDays(timelineRange.start, Math.max(0, dayIndex));
+            const originalDuration = draggedTask.duration || 1;
+            const newEndDate = addDays(newStartDate, originalDuration - 1);
+            
+            const preview = calculateDependencyPreview(draggedTask.id, newStartDate, newEndDate);
+            setDependencyPreview(preview);
+        }
     };
 
-    // Handle task drop
+    // Handle task drop with automatic rescheduling
     const handleDrop = useCallback(async (e) => {
         e.preventDefault();
+        setDependencyPreview([]);
         
         if (!draggedTask || !timelineRef.current) return;
 
@@ -224,6 +274,23 @@ setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysTo
         const newEndDate = addDays(newStartDate, originalDuration - 1);
 
         try {
+            setIsRescheduling(true);
+            
+            // Check for circular dependencies if auto-rescheduling
+            if (autoReschedule) {
+                const affectedTasks = calculateDependencyPreview(draggedTask.id, newStartDate, newEndDate);
+                
+                if (affectedTasks.length > 0) {
+                    const confirmMessage = `Moving this task will automatically reschedule ${affectedTasks.length} dependent task(s). Continue?`;
+                    if (!confirm(confirmMessage)) {
+                        setDraggedTask(null);
+                        setDragOffset({ x: 0, y: 0 });
+                        setIsRescheduling(false);
+                        return;
+                    }
+                }
+            }
+
             const updatedTask = {
                 ...draggedTask,
                 startDate: newStartDate.toISOString(),
@@ -232,18 +299,35 @@ setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysTo
 
             await onUpdateTask(draggedTask.id, updatedTask);
             
-            // Trigger automatic rescheduling of dependent tasks
-            await taskService.rescheduleDependent(draggedTask.id, newStartDate, newEndDate);
+            // Trigger automatic rescheduling of dependent tasks if enabled
+            if (autoReschedule) {
+                try {
+                    await taskService.rescheduleDependent(draggedTask.id, newStartDate, newEndDate);
+                    toast.success('Task and dependent tasks rescheduled successfully');
+                } catch (rescheduleError) {
+                    toast.warning('Task moved but some dependencies could not be rescheduled: ' + rescheduleError.message);
+                }
+            } else {
+                toast.success('Task dates updated successfully');
+            }
             
-            toast.success('Task dates updated successfully');
             if (onTaskUpdate) onTaskUpdate();
         } catch (error) {
-            toast.error('Failed to update task dates');
-        }
+            console.error('Drop error:', error);
+            if (error.message.includes('circular dependency')) {
+                toast.error('Cannot move task: would create circular dependency');
+            } else if (error.message.includes('date')) {
+                toast.error('Invalid date range: ' + error.message);
+            } else {
+                toast.error('Failed to update task dates');
+            }
+        } finally {
+            setIsRescheduling(false);
+}
 
         setDraggedTask(null);
         setDragOffset({ x: 0, y: 0 });
-    }, [draggedTask, dragOffset, dayWidth, timelineRange.start, onUpdateTask, onTaskUpdate]);
+    }, [draggedTask, timelineRef, dragOffset, dayWidth, timelineRange, autoReschedule, calculateDependencyPreview, onUpdateTask, onTaskUpdate]);
 
     // Handle task click for dependency creation
     const handleTaskClick = useCallback((task, event) => {
@@ -362,7 +446,7 @@ return (
                             <option value="priority">Priority</option>
                             <option value="title">Title</option>
                         </select>
-                        <Button
+<Button
                             onClick={() => setIsCreatingDependency(!isCreatingDependency)}
                             className={`px-3 py-1 text-xs rounded-lg transition-colors ${
                                 isCreatingDependency
@@ -373,6 +457,15 @@ return (
                             <ApperIcon name="GitBranch" size={14} className="mr-1" />
                             {isCreatingDependency ? 'Cancel Dependencies' : 'Create Dependencies'}
                         </Button>
+                        <label className="flex items-center space-x-2 text-xs">
+                            <input
+                                type="checkbox"
+                                checked={autoReschedule}
+                                onChange={(e) => setAutoReschedule(e.target.checked)}
+                                className="rounded"
+                            />
+                            <span>Auto-reschedule dependent tasks</span>
+                        </label>
                     </div>
                 </div>
 
@@ -487,60 +580,76 @@ return (
                         </svg>
                         {/* Task Rows */}
                         <AnimatePresence>
-                            {timelineTasks.map((task, index) => (
-                                <motion.div
-                                    key={task.id}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    className="flex items-center min-h-[60px] border-b border-gray-50 hover:bg-gray-25"
-                                >
-                                    {/* Task Label */}
-                                    <div className="w-48 flex-shrink-0 px-4 py-2">
-                                        <Text as="h4" className="font-medium text-gray-900 text-sm truncate">
-                                            {task.title}
-                                        </Text>
-                                        <Text as="p" className="text-xs text-gray-500 truncate">
-                                            {task.priority} priority
-                                        </Text>
-                                    </div>
-
-                                    {/* Timeline Bar */}
-                                    <div className="relative flex-1" style={{ height: '40px' }}>
-                                        <div
-                                            className={`timeline-task absolute top-1/2 transform -translate-y-1/2 rounded-md border-2 cursor-pointer group ${getPriorityColor(task.priority)} ${
-                                                draggedTask?.id === task.id ? 'dragging' : ''
-                                            }`}
-style={{
-                                                left: task.startOffset * dayWidth + 8,
-                                                width: Math.max(dayWidth - 16, task.duration * dayWidth - 16),
-                                                height: '24px'
-                                            }}
-                                            draggable
-                                            onDragStart={(e) => handleDragStart(e, task)}
-                                            onClick={(e) => handleTaskClick(task, e)}
-                                            onMouseEnter={(e) => handleTooltip(task, true, e)}
-                                            onMouseLeave={() => handleTooltip(null, false)}
-                                        >
-                                            <div className="flex items-center justify-between h-full px-2">
-                                                <Text as="span" className="text-xs font-medium text-white truncate">
-                                                    {task.title}
-                                                </Text>
-                                                {task.duration > 2 && (
-                                                    <Text as="span" className="text-xs text-white opacity-75">
-                                                        {task.duration}d
-                                                    </Text>
+{timelineTasks.map((task, index) => {
+                                const isPreviewTask = dependencyPreview.find(p => p.id === task.id);
+                                return (
+                                    <motion.div
+                                        key={task.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ delay: index * 0.05 }}
+                                        className="flex items-center min-h-[60px] border-b border-gray-50 hover:bg-gray-25"
+                                    >
+                                        {/* Task Label */}
+                                        <div className="w-48 flex-shrink-0 px-4 py-2">
+                                            <Text as="h4" className="font-medium text-gray-900 text-sm truncate">
+                                                {task.title}
+                                                {isPreviewTask && (
+                                                    <span className="ml-1 text-xs text-blue-600 font-medium">(will move)</span>
                                                 )}
-                                            </div>
-
-                                            {/* Resize Handles */}
-                                            <div className="timeline-resize-handle absolute left-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
-                                            <div className="timeline-resize-handle absolute right-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
+                                            </Text>
+                                            <Text as="p" className="text-xs text-gray-500 truncate">
+                                                {task.priority} priority
+                                                {autoReschedule && task.dependencies && task.dependencies.length > 0 && (
+                                                    <span className="ml-1 text-blue-600">• Auto-reschedule</span>
+                                                )}
+                                            </Text>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+
+                                        {/* Timeline Bar */}
+                                        <div className="relative flex-1" style={{ height: '40px' }}>
+                                            <div
+                                                className={`timeline-task absolute top-1/2 transform -translate-y-1/2 rounded-md border-2 cursor-pointer group ${getPriorityColor(task.priority)} ${
+                                                    draggedTask?.id === task.id ? 'dragging' : ''
+                                                } ${isPreviewTask ? 'reschedule-preview' : ''}`}
+                                                style={{
+                                                    left: task.startOffset * dayWidth + 8,
+                                                    width: Math.max(dayWidth - 16, task.duration * dayWidth - 16),
+                                                    height: '24px'
+                                                }}
+                                                draggable={!isRescheduling}
+                                                onDragStart={(e) => handleDragStart(e, task)}
+                                                onClick={(e) => handleTaskClick(task, e)}
+                                                onMouseEnter={(e) => handleTooltip(task, true, e)}
+                                                onMouseLeave={() => handleTooltip(null, false)}
+                                            >
+                                                <div className="flex items-center justify-between h-full px-2">
+                                                    <Text as="span" className="text-xs font-medium text-white truncate">
+                                                        {task.title}
+                                                    </Text>
+                                                    {task.duration > 2 && (
+                                                        <Text as="span" className="text-xs text-white opacity-75">
+                                                            {task.duration}d
+                                                        </Text>
+                                                    )}
+                                                </div>
+
+                                                {/* Auto-reschedule indicator */}
+                                                {autoReschedule && task.dependencies && task.dependencies.length > 0 && (
+                                                    <div className="auto-reschedule-indicator">
+                                                        A
+                                                    </div>
+                                                )}
+
+                                                {/* Resize Handles */}
+                                                <div className="timeline-resize-handle absolute left-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
+                                                <div className="timeline-resize-handle absolute right-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
                         </AnimatePresence>
 
                         {/* Empty State */}

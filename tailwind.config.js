@@ -97,14 +97,16 @@ boxShadow: {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' }
 }
-      },
+},
       cursor: {
-        'dependency': 'crosshair'
+        'dependency': 'crosshair',
+        'rescheduling': 'move'
       },
       zIndex: {
         'dependency': '15',
         'tooltip': '50',
-        'milestone': '25'
+        'milestone': '25',
+        'preview': '30'
       }
     },
   },
