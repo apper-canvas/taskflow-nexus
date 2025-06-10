@@ -2,7 +2,7 @@ import React from 'react';
 import FormField from '@/components/molecules/FormField';
 import Button from '@/components/atoms/Button';
 
-const CreateProjectForm = ({ newProject, setNewProject, handleSubmit, onClose }) => {
+const CreateProjectForm = ({ newProject, setNewProject, handleSubmit, onClose, loading }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <FormField
@@ -31,11 +31,12 @@ const CreateProjectForm = ({ newProject, setNewProject, handleSubmit, onClose })
                 >
                     Cancel
                 </Button>
-                <Button
+<Button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    disabled={loading}
+                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Create Project
+                    {loading ? 'Creating...' : 'Create Project'}
                 </Button>
             </div>
         </form>
