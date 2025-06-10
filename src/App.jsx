@@ -4,6 +4,7 @@ import Layout from './Layout';
 import HomePage from '@/components/pages/HomePage';
 import DashboardPage from '@/components/pages/DashboardPage';
 import ProjectBoardPage from '@/components/pages/ProjectBoardPage';
+import TaskManagementPage from '@/components/pages/TaskManagementPage';
 import ArchivePage from '@/components/pages/ArchivePage';
 import SettingsPage from '@/components/pages/SettingsPage';
 import NotFoundPage from '@/components/pages/NotFoundPage';
@@ -13,11 +14,12 @@ function App() {
     <BrowserRouter>
       <div className="h-screen flex flex-col overflow-hidden bg-white">
         <Routes>
-          <Route path="/" element={<Layout />}>
+<Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
-<Route path="home" element={<HomePage />} />
+            <Route path="home" element={<HomePage />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="project/:id" element={<ProjectBoardPage />} />
+            <Route path="tasks" element={<TaskManagementPage />} />
             <Route path="archive" element={<ArchivePage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
