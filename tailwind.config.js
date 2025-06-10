@@ -93,11 +93,11 @@ boxShadow: {
           '0%': { transform: 'translateX(-10px)', opacity: '0' },
           '100%': { transform: 'translateX(0)', opacity: '1' }
         },
-        zoomIn: {
+zoomIn: {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' }
-}
-},
+        }
+      },
       cursor: {
         'dependency': 'crosshair',
         'rescheduling': 'move'
@@ -107,8 +107,8 @@ boxShadow: {
         'tooltip': '50',
         'milestone': '25',
         'preview': '30'
+      },
+      clipPath: {
+        'diamond': 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
       }
     },
-  },
-  plugins: [],
-}

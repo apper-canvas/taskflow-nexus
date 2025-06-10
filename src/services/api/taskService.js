@@ -31,18 +31,20 @@ class TaskService {
     return this.tasks.filter(t => t.projectId === projectId).map(t => ({ ...t }));
   }
 
-  async create(taskData) {
+async create(taskData) {
     await delay(350);
     const task = {
       ...taskData,
       id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: taskData.type || 'task',
+      isDeadline: taskData.isDeadline || false,
       createdAt: new Date().toISOString(),
       completedAt: null
     };
     this.tasks.push(task);
     this.saveToStorage();
     return { ...task };
-}
+  }
 
   async update(id, updates) {
     await delay(300);
@@ -281,6 +283,79 @@ async rescheduleDependent(taskId, newStartDate, newEndDate) {
     }
 
 return dependencies;
+  }
+
+  async createMilestone(milestoneData) {
+    await delay(350);
+    const milestone = {
+      ...milestoneData,
+      id: `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'milestone',
+      isDeadline: milestoneData.isDeadline || false,
+      createdAt: new Date().toISOString(),
+      completedAt: null
+    };
+    this.tasks.push(milestone);
+    this.saveToStorage();
+    return { ...milestone };
+  }
+
+  async getMilestones(projectId = null) {
+    await delay(200);
+    const milestones = this.tasks.filter(t => t.type === 'milestone');
+    return projectId 
+      ? milestones.filter(m => m.projectId === projectId).map(m => ({ ...m }))
+      : milestones.map(m => ({ ...m }));
+  }
+
+  async getDeadlines(projectId = null) {
+    await delay(200);
+    const deadlines = this.tasks.filter(t => t.isDeadline === true);
+    return projectId 
+      ? deadlines.filter(d => d.projectId === projectId).map(d => ({ ...d }))
+      : deadlines.map(d => ({ ...d }));
+  }
+
+  async updateMilestone(id, updates) {
+    await delay(300);
+    const index = this.tasks.findIndex(t => t.id === id && t.type === 'milestone');
+    if (index === -1) {
+      throw new Error('Milestone not found');
+    }
+
+    // Validate milestone-specific constraints
+    if (updates.type && updates.type !== 'milestone') {
+      throw new Error('Cannot change milestone type');
+    }
+
+    this.tasks[index] = { 
+      ...this.tasks[index], 
+      ...updates,
+      type: 'milestone' // Ensure type remains milestone
+    };
+    this.saveToStorage();
+    return { ...this.tasks[index] };
+  }
+
+  async deleteMilestone(id) {
+    await delay(300);
+    const index = this.tasks.findIndex(t => t.id === id && t.type === 'milestone');
+    if (index === -1) {
+      throw new Error('Milestone not found');
+    }
+
+    // Check for dependencies before deletion
+    const dependentTasks = this.tasks.filter(task => 
+      task.dependencies && task.dependencies.includes(id)
+    );
+    
+    if (dependentTasks.length > 0) {
+      throw new Error(`Cannot delete milestone: ${dependentTasks.length} tasks depend on it`);
+    }
+
+    this.tasks.splice(index, 1);
+    this.saveToStorage();
+    return true;
   }
 }
 

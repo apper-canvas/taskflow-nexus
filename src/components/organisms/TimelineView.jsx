@@ -10,12 +10,12 @@ import { taskService } from '@/services';
 
 const TimelineView = ({ tasks, onUpdateTask, onEditTask, onTaskUpdate }) => {
     const [zoomLevel, setZoomLevel] = useState('week'); // day, week, month
-const [currentDate, setCurrentDate] = useState(new Date());
+    const [currentDate, setCurrentDate] = useState(new Date());
     const [draggedTask, setDraggedTask] = useState(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [isCreatingDependency, setIsCreatingDependency] = useState(false);
     const [dependencySource, setDependencySource] = useState(null);
-const [tooltip, setTooltip] = useState({ task: null, visible: false, x: 0, y: 0 });
+    const [tooltip, setTooltip] = useState({ task: null, visible: false, x: 0, y: 0 });
     const [filters, setFilters] = useState({
         priority: 'all',
         status: 'all',
@@ -65,9 +65,9 @@ const [tooltip, setTooltip] = useState({ task: null, visible: false, x: 0, y: 0 
             case 'month': return 30;
             default: return 60;
         }
-    }, [zoomLevel]);
+}, [zoomLevel]);
 
-// Filter and position tasks within timeline range
+    // Filter and position tasks within timeline range
     const timelineTasks = useMemo(() => {
         return tasks
             .filter(task => {
@@ -142,11 +142,10 @@ const [tooltip, setTooltip] = useState({ task: null, visible: false, x: 0, y: 0 
             case 'day': daysToMove = 7; break;
             case 'week': daysToMove = 14; break;
             case 'month': daysToMove = 30; break;
-            default: daysToMove = 14;
+default: daysToMove = 14;
         }
-setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysToMove));
+        setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysToMove));
     };
-
     // Handle dependency creation
     const handleCreateDependency = useCallback(async (sourceTaskId, targetTaskId) => {
         if (sourceTaskId === targetTaskId) {
@@ -183,12 +182,11 @@ setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysTo
                 visible: true,
                 x: rect.left + rect.width / 2,
                 y: rect.top - 10
-            });
+});
         } else {
-setTooltip({ task: null, visible: false, x: 0, y: 0 });
+            setTooltip({ task: null, visible: false, x: 0, y: 0 });
         }
     }, []);
-
     // Calculate dependency preview for rescheduling
     const calculateDependencyPreview = useCallback((taskId, newStartDate, newEndDate) => {
         if (!autoReschedule) return [];
@@ -234,11 +232,10 @@ setTooltip({ task: null, visible: false, x: 0, y: 0 });
         const rect = e.target.getBoundingClientRect();
         setDragOffset({
             x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+y: e.clientY - rect.top
         });
-e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.effectAllowed = 'move';
     };
-
     // Handle task drag over timeline with preview
     const handleDragOver = (e) => {
         e.preventDefault();
@@ -321,14 +318,13 @@ e.dataTransfer.effectAllowed = 'move';
             } else {
                 toast.error('Failed to update task dates');
             }
-        } finally {
+} finally {
             setIsRescheduling(false);
-}
+        }
 
         setDraggedTask(null);
         setDragOffset({ x: 0, y: 0 });
     }, [draggedTask, timelineRef, dragOffset, dayWidth, timelineRange, autoReschedule, calculateDependencyPreview, onUpdateTask, onTaskUpdate]);
-
     // Handle task click for dependency creation
     const handleTaskClick = useCallback((task, event) => {
         if (isCreatingDependency) {
@@ -384,10 +380,10 @@ e.dataTransfer.effectAllowed = 'move';
             const date = addDays(timelineRange.start, i);
             dates.push(date);
         }
-        return dates;
+return dates;
     };
 
-return (
+    return (
         <div className={`h-full flex flex-col bg-white ${isCreatingDependency ? 'dependency-creating' : ''}`}>
             {/* Timeline Controls */}
             <div className="flex-shrink-0 p-4 border-b border-gray-200">
@@ -444,9 +440,9 @@ return (
                         >
                             <option value="startDate">Start Date</option>
                             <option value="priority">Priority</option>
-                            <option value="title">Title</option>
+<option value="title">Title</option>
                         </select>
-<Button
+                        <Button
                             onClick={() => setIsCreatingDependency(!isCreatingDependency)}
                             className={`px-3 py-1 text-xs rounded-lg transition-colors ${
                                 isCreatingDependency
@@ -535,9 +531,9 @@ return (
                                 </div>
                             ))}
                         </div>
-                    </div>
+</div>
 
-{/* Timeline Content */}
+                    {/* Timeline Content */}
                     <div
                         ref={timelineRef}
                         className="relative timeline-grid"
@@ -577,10 +573,10 @@ return (
                                     />
                                 </g>
                             ))}
-                        </svg>
+</svg>
                         {/* Task Rows */}
                         <AnimatePresence>
-{timelineTasks.map((task, index) => {
+                            {timelineTasks.map((task, index) => {
                                 const isPreviewTask = dependencyPreview.find(p => p.id === task.id);
                                 return (
                                     <motion.div
@@ -605,47 +601,74 @@ return (
                                                     <span className="ml-1 text-blue-600">• Auto-reschedule</span>
                                                 )}
                                             </Text>
-                                        </div>
+</div>
 
                                         {/* Timeline Bar */}
                                         <div className="relative flex-1" style={{ height: '40px' }}>
-                                            <div
-                                                className={`timeline-task absolute top-1/2 transform -translate-y-1/2 rounded-md border-2 cursor-pointer group ${getPriorityColor(task.priority)} ${
-                                                    draggedTask?.id === task.id ? 'dragging' : ''
-                                                } ${isPreviewTask ? 'reschedule-preview' : ''}`}
-                                                style={{
-                                                    left: task.startOffset * dayWidth + 8,
-                                                    width: Math.max(dayWidth - 16, task.duration * dayWidth - 16),
-                                                    height: '24px'
-                                                }}
-                                                draggable={!isRescheduling}
-                                                onDragStart={(e) => handleDragStart(e, task)}
-                                                onClick={(e) => handleTaskClick(task, e)}
-                                                onMouseEnter={(e) => handleTooltip(task, true, e)}
-                                                onMouseLeave={() => handleTooltip(null, false)}
-                                            >
-                                                <div className="flex items-center justify-between h-full px-2">
-                                                    <Text as="span" className="text-xs font-medium text-white truncate">
-                                                        {task.title}
-                                                    </Text>
-                                                    {task.duration > 2 && (
-                                                        <Text as="span" className="text-xs text-white opacity-75">
-                                                            {task.duration}d
-                                                        </Text>
+                                            {task.type === 'milestone' ? (
+                                                // Milestone rendering - diamond shape
+                                                <div
+                                                    className={`timeline-task milestone-marker absolute top-1/2 transform -translate-y-1/2 cursor-pointer group ${
+                                                        draggedTask?.id === task.id ? 'dragging' : ''
+                                                    } ${isPreviewTask ? 'reschedule-preview' : ''}`}
+                                                    style={{
+                                                        left: task.startOffset * dayWidth + dayWidth/2 - 12,
+                                                        width: '24px',
+                                                        height: '24px'
+                                                    }}
+                                                    draggable={!isRescheduling}
+                                                    onDragStart={(e) => handleDragStart(e, task)}
+                                                    onClick={(e) => handleTaskClick(task, e)}
+                                                    onMouseEnter={(e) => handleTooltip(task, true, e)}
+                                                    onMouseLeave={() => handleTooltip(null, false)}
+                                                >
+                                                    {/* Auto-reschedule indicator for milestones */}
+                                                    {autoReschedule && task.dependencies && task.dependencies.length > 0 && (
+                                                        <div className="auto-reschedule-indicator">
+                                                            A
+                                                        </div>
                                                     )}
                                                 </div>
-
-                                                {/* Auto-reschedule indicator */}
-                                                {autoReschedule && task.dependencies && task.dependencies.length > 0 && (
-                                                    <div className="auto-reschedule-indicator">
-                                                        A
+                                            ) : (
+                                                // Regular task rendering
+                                                <div
+                                                    className={`timeline-task absolute top-1/2 transform -translate-y-1/2 rounded-md border-2 cursor-pointer group ${getPriorityColor(task.priority)} ${
+                                                        draggedTask?.id === task.id ? 'dragging' : ''
+                                                    } ${isPreviewTask ? 'reschedule-preview' : ''} ${task.isDeadline ? 'deadline-marker' : ''}`}
+                                                    style={{
+                                                        left: task.startOffset * dayWidth + 8,
+                                                        width: Math.max(dayWidth - 16, task.duration * dayWidth - 16),
+                                                        height: '24px'
+                                                    }}
+                                                    draggable={!isRescheduling}
+                                                    onDragStart={(e) => handleDragStart(e, task)}
+                                                    onClick={(e) => handleTaskClick(task, e)}
+                                                    onMouseEnter={(e) => handleTooltip(task, true, e)}
+                                                    onMouseLeave={() => handleTooltip(null, false)}
+                                                >
+                                                    <div className="flex items-center justify-between h-full px-2">
+                                                        <Text as="span" className="text-xs font-medium text-white truncate">
+                                                            {task.title}
+                                                        </Text>
+                                                        {task.duration > 2 && (
+                                                            <Text as="span" className="text-xs text-white opacity-75">
+                                                                {task.duration}d
+                                                            </Text>
+                                                        )}
                                                     </div>
-                                                )}
 
-                                                {/* Resize Handles */}
-                                                <div className="timeline-resize-handle absolute left-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
-                                                <div className="timeline-resize-handle absolute right-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
-                                            </div>
+                                                    {/* Auto-reschedule indicator */}
+                                                    {autoReschedule && task.dependencies && task.dependencies.length > 0 && (
+                                                        <div className="auto-reschedule-indicator">
+                                                            A
+                                                        </div>
+                                                    )}
+
+                                                    {/* Resize Handles */}
+                                                    <div className="timeline-resize-handle absolute left-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
+                                                    <div className="timeline-resize-handle absolute right-0 top-0 w-1 h-full bg-white bg-opacity-50 cursor-ew-resize" />
+                                                </div>
+                                            )}
                                         </div>
                                     </motion.div>
                                 );
@@ -663,9 +686,9 @@ return (
                                     <Text as="p" className="text-gray-500">
                                         Tasks need start dates or due dates to appear in the timeline view.
                                     </Text>
-                                </div>
+</div>
                             </div>
-)}
+                        )}
                     </div>
                 </div>
             </div>

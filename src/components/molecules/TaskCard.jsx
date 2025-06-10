@@ -23,8 +23,8 @@ const TaskCard = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, x: -100 }}
-            transition={{ delay: index * 0.05 }}
-draggable
+transition={{ delay: index * 0.05 }}
+            draggable
             onDragStart={onDragStart}
             onClick={onEdit}
             onMouseEnter={onTooltipToggle ? () => onTooltipToggle(task, true) : undefined}
@@ -65,6 +65,12 @@ draggable
                         <div className="flex items-center space-x-1">
                             <ApperIcon name="Flag" size={12} className="text-accent-500" />
                             <Text as="span" className="text-accent-600 font-medium">Milestone</Text>
+                        </div>
+                    )}
+                    {task.isDeadline && (
+                        <div className="flex items-center space-x-1">
+                            <ApperIcon name="AlertTriangle" size={12} className="text-red-500" />
+                            <Text as="span" className="text-red-600 font-medium">Deadline</Text>
                         </div>
                     )}
                     {task.dependencies && task.dependencies.length > 0 && (

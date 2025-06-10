@@ -101,27 +101,49 @@ body {
     border: 2px dashed #6366f1 !important;
   }
 
-  .milestone-marker {
+.milestone-marker {
     position: relative;
+    border-radius: 0 !important;
+    transform: rotate(45deg);
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    border: 2px solid #b45309 !important;
   }
 
   .milestone-marker::before {
-    content: '';
+    content: '🏁';
     position: absolute;
-    top: -4px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 8px solid #f59e0b;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 12px;
+    z-index: 1;
+  }
+
+  .milestone-content {
+    transform: rotate(-45deg);
   }
 
   .deadline-marker {
-    border-left: 3px solid #ef4444 !important;
+    border-left: 4px solid #ef4444 !important;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.1), transparent) !important;
   }
 
+  .deadline-marker::after {
+    content: '⚠️';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    font-size: 10px;
+    background: #ef4444;
+    color: white;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
   .tooltip {
     position: absolute;
     z-index: 50;
