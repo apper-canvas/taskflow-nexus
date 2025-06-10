@@ -359,4 +359,6 @@ return dependencies;
   }
 }
 
-export default TaskService;
+// Export singleton instance to match other services pattern
+const taskService = new TaskService();
+export default taskService;
