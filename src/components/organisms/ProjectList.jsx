@@ -16,8 +16,9 @@ const ProjectList = () => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [showCreateProject, setShowCreateProject] = useState(false);
+const [showCreateProject, setShowCreateProject] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [formLoading, setFormLoading] = useState(false);
     const [newProject, setNewProject] = useState({ name: '', description: '' });
 
     useEffect(() => {
@@ -55,6 +56,20 @@ const ProjectList = () => {
             toast.error('Failed to load projects');
         } finally {
             setLoading(false);
+        }
+    };
+
+const handleShowCreateProject = async () => {
+        try {
+            setFormLoading(true);
+            setShowCreateProject(true);
+            // Reset form state
+            setNewProject({ name: '', description: '' });
+        } catch (error) {
+            console.error('Error displaying form:', error);
+            toast.error('Failed to load project form');
+        } finally {
+            setFormLoading(false);
         }
     };
 
@@ -102,7 +117,7 @@ const ProjectList = () => {
         return <ErrorState message={error} onRetry={loadProjects} />;
     }
 
-    if (projects.length === 0) {
+if (projects.length === 0) {
         return (
             <EmptyState
                 iconName="FolderPlus"
@@ -110,7 +125,8 @@ const ProjectList = () => {
                 message="Get started by creating your first project. Organize tasks, track progress, and meet deadlines efficiently."
                 actionButtonText="Create First Project"
                 actionButtonIcon="Plus"
-                onActionButtonClick={() => setShowCreateProject(true)}
+                onActionButtonClick={handleShowCreateProject}
+                loading={formLoading}
             />
         );
     }
@@ -121,17 +137,18 @@ const ProjectList = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                 <div>
                     <Text as="h1" className="text-2xl font-heading font-bold text-gray-900">Project Dashboard</Text>
-                    <Text as="p" className="text-gray-600">Manage your projects and track progress</Text>
+<Text as="p" className="text-gray-600">Manage your projects and track progress</Text>
                 </div>
                 <Button
                     as={motion.button}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowCreateProject(true)}
-                    className="inline-flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                    onClick={handleShowCreateProject}
+                    disabled={formLoading}
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <ApperIcon name="Plus" size={16} />
-                    <span>New Project</span>
+                    <span>{formLoading ? 'Loading...' : 'New Project'}</span>
                 </Button>
             </div>
 
@@ -140,19 +157,20 @@ const ProjectList = () => {
                 {projects.map((project, index) => (
                     <ProjectCard key={project.id} project={project} index={index} />
                 ))}
-            </div>
+</div>
 
             <Modal
                 isOpen={showCreateProject}
                 onClose={() => setShowCreateProject(false)}
                 title="Create New Project"
             >
-<CreateProjectForm
+                <CreateProjectForm
                     newProject={newProject}
                     setNewProject={setNewProject}
                     handleSubmit={handleCreateProject}
                     onClose={() => setShowCreateProject(false)}
                     loading={creating}
+                    formLoading={formLoading}
                 />
             </Modal>
         </div>
