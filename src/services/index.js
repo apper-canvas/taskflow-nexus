@@ -1,17 +1,31 @@
-export { default as projectService } from './api/projectService';
-export { default as taskService } from './api/taskService';
+// Services
+import ProjectService from './api/projectService';
+import TaskService from './api/taskService';
+import UserService from './api/userService';
+import NotificationService from './api/notificationService';
+import AnalyticsService from './api/analyticsService';
 
-// Utility function for simulating API delays
+// Service instances
+export const projectService = new ProjectService();
+export const taskService = new TaskService();
+export const userService = new UserService();
+export const notificationService = new NotificationService();
+export const analyticsService = new AnalyticsService();
+
+// Utility functions
 export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Utility functions for dependency management
+// Dependency management utilities
 export const detectCircularDependency = (tasks, sourceId, targetId) => {
-  const visited = new Set();
-  const recursionStack = new Set();
-  
-  const hasCycle = (taskId) => {
-    if (recursionStack.has(taskId)) return true;
-    if (visited.has(taskId)) return false;
+  // Helper function to detect cycles using DFS
+  const hasCycle = (taskId, visited = new Set(), recursionStack = new Set()) => {
+    if (recursionStack.has(taskId)) {
+      return true; // Cycle detected
+    }
+    
+    if (visited.has(taskId)) {
+      return false; // Already processed
+    }
     
     visited.add(taskId);
     recursionStack.add(taskId);
@@ -19,7 +33,9 @@ export const detectCircularDependency = (tasks, sourceId, targetId) => {
     const task = tasks.find(t => t.id === taskId);
     if (task && task.dependencies) {
       for (const depId of task.dependencies) {
-        if (hasCycle(depId)) return true;
+        if (hasCycle(depId, visited, recursionStack)) {
+          return true;
+        }
       }
     }
     
@@ -27,16 +43,20 @@ export const detectCircularDependency = (tasks, sourceId, targetId) => {
     return false;
   };
   
-  // Temporarily add the new dependency to check for cycles
+  // Create a test scenario by temporarily adding the proposed dependency
   const targetTask = tasks.find(t => t.id === targetId);
-  const originalDeps = targetTask?.dependencies || [];
-  const testDeps = [...originalDeps, sourceId];
+  if (!targetTask) {
+    return false;
+  }
   
   const testTasks = tasks.map(t => 
-    t.id === targetId ? { ...t, dependencies: testDeps } : t
+    t.id === targetId 
+      ? { ...t, dependencies: [...(t.dependencies || []), sourceId] }
+      : t
   );
   
-  return hasCycle(targetId);
+  // Check for cycles in the modified task graph
+  return hasCycle(targetId, new Set(), new Set());
 };
 
 export const calculateTaskEndDate = (startDate, duration = 1) => {

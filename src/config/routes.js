@@ -2,6 +2,7 @@ import HomePage from '@/components/pages/HomePage';
 import DashboardPage from '@/components/pages/DashboardPage';
 import ArchivePage from '@/components/pages/ArchivePage';
 import SettingsPage from '@/components/pages/SettingsPage';
+import TaskManagementPage from '@/components/pages/TaskManagementPage';
 
 export const routes = {
   home: {
@@ -24,13 +25,20 @@ component: DashboardPage
     path: '/archive',
     icon: 'Archive',
 component: ArchivePage
+},
+  tasks: {
+    id: 'tasks',
+    label: 'Tasks',
+    path: '/tasks',
+    icon: 'CheckSquare',
+    component: TaskManagementPage
   },
   settings: {
     id: 'settings',
     label: 'Settings',
     path: '/settings',
     icon: 'Settings',
-component: SettingsPage
+    component: SettingsPage
   }
 };
 

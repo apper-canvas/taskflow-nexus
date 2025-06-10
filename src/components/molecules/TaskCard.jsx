@@ -12,9 +12,12 @@ const TaskCard = ({
     onDelete, 
     onDragStart, 
     isDragged, 
-    dragRef,
+dragRef,
     showTooltip = false,
-    onTooltipToggle
+    onTooltipToggle,
+    showAssignee = false,
+    showComments = false,
+    showAttachments = false
 }) => {
     return (
         <motion.div
@@ -79,14 +82,79 @@ transition={{ delay: index * 0.05 }}
                             <Text as="span" className="text-primary-600">{task.dependencies.length}</Text>
                         </div>
                     )}
+</div>
+                <div className="flex items-center space-x-2">
+                    {task.dueDate && (
+                        <div className="flex items-center space-x-1">
+                            <ApperIcon name="Calendar" size={12} />
+                            <Text as="span">{format(new Date(task.dueDate), 'MMM dd')}</Text>
+                        </div>
+                    )}
+                    
+                    {/* Recurring Task Indicator */}
+                    {task.isRecurring && (
+                        <div className="task-recurring-indicator" title="Recurring Task">
+                            <ApperIcon name="Repeat" size={8} />
+                        </div>
+                    )}
                 </div>
-                {task.dueDate && (
-                    <div className="flex items-center space-x-1">
-                        <ApperIcon name="Calendar" size={12} />
-                        <Text as="span">{format(new Date(task.dueDate), 'MMM dd')}</Text>
-                    </div>
-                )}
             </div>
+
+            {/* Additional Task Info */}
+            {(showAssignee || showComments || showAttachments) && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            {/* Assignee */}
+                            {showAssignee && task.assignedTo && (
+                                <div className="flex items-center space-x-1">
+                                    <img 
+                                        src={task.assignedTo.avatar || '/default-avatar.png'} 
+                                        alt={task.assignedTo.name}
+                                        className="task-assignee-avatar"
+                                        title={task.assignedTo.name}
+                                    />
+                                    <Text as="span" className="text-xs text-gray-600 truncate max-w-16">
+                                        {task.assignedTo.name}
+                                    </Text>
+                                </div>
+                            )}
+
+                            {/* Unassigned indicator */}
+                            {showAssignee && !task.assignedTo && (
+                                <div className="flex items-center space-x-1">
+                                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <ApperIcon name="User" size={12} className="text-gray-400" />
+                                    </div>
+                                    <Text as="span" className="text-xs text-gray-400">Unassigned</Text>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                            {/* Comments Count */}
+                            {showComments && task.comments && task.comments.length > 0 && (
+                                <div className="flex items-center space-x-1">
+                                    <ApperIcon name="MessageCircle" size={12} className="text-gray-400" />
+                                    <Text as="span" className="text-xs text-gray-600">
+                                        {task.comments.length}
+                                    </Text>
+                                </div>
+                            )}
+
+                            {/* Attachments Count */}
+                            {showAttachments && task.attachments && task.attachments.length > 0 && (
+                                <div className="flex items-center space-x-1">
+                                    <ApperIcon name="Paperclip" size={12} className="text-gray-400" />
+                                    <Text as="span" className="text-xs text-gray-600">
+                                        {task.attachments.length}
+                                    </Text>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </motion.div>
     );
 };

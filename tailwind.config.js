@@ -104,12 +104,21 @@ slideIn: {
       },
       zIndex: {
         'dependency': '15',
-        'tooltip': '50',
+'tooltip': '50',
         'milestone': '25',
-        'preview': '30'
-},
+        'preview': '30',
+        'modal': '100',
+        'dropdown': '200'
+      },
       clipPath: {
         'diamond': 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
+      },
+      maxWidth: {
+        'xs': '20rem',
+        'sm': '24rem',
+        'md': '28rem',
+        'lg': '32rem',
+        'xl': '36rem'
       }
     }
   },
