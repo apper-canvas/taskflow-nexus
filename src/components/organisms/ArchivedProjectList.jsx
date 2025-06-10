@@ -20,7 +20,7 @@ const ArchivedProjectList = () => {
         loadArchivedProjects();
     }, []);
 
-    const loadArchivedProjects = async () => {
+const loadArchivedProjects = async () => {
         setLoading(true);
         setError(null);
         try {
@@ -52,10 +52,9 @@ const ArchivedProjectList = () => {
         }
     };
 
-    const handleRestoreProject = async (projectId) => {
+const handleRestoreProject = async (projectId) => {
         try {
-            const project = archivedProjects.find(p => p.id === projectId);
-            await projectService.update(projectId, { ...project, archived: false });
+            await projectService.update(projectId, { archived: false });
             setArchivedProjects(prev => prev.filter(p => p.id !== projectId));
             toast.success('Project restored successfully');
         } catch (error) {
@@ -66,7 +65,7 @@ const ArchivedProjectList = () => {
     const handleDeleteProject = async (projectId) => {
         if (!confirm('Are you sure you want to permanently delete this project? This action cannot be undone.')) {
             return;
-        }
+}
 
         try {
             const tasks = await taskService.getByProjectId(projectId);

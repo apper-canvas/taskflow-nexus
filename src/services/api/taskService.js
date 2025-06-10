@@ -1,361 +1,319 @@
-import tasksData from '../mockData/tasks.json';
-import { delay } from '../index';
+import { toast } from 'react-toastify';
 
 class TaskService {
   constructor() {
-    this.tasks = this.loadFromStorage();
+    this.tableName = 'task';
+    this.updateableFields = ['Name', 'Tags', 'Owner', 'project_id', 'title', 'description', 'status', 'priority', 'type', 'is_deadline', 'start_date', 'due_date', 'created_at', 'completed_at'];
+    this.allFields = ['Id', 'Name', 'Tags', 'Owner', 'CreatedOn', 'CreatedBy', 'ModifiedOn', 'ModifiedBy', 'project_id', 'title', 'description', 'status', 'priority', 'type', 'is_deadline', 'start_date', 'due_date', 'created_at', 'completed_at'];
   }
 
-  loadFromStorage() {
-    const stored = localStorage.getItem('taskflow-tasks');
-    return stored ? JSON.parse(stored) : [...tasksData];
+  getApperClient() {
+    if (!window.ApperSDK) {
+      throw new Error('Apper SDK not loaded');
+    }
+    const { ApperClient } = window.ApperSDK;
+    return new ApperClient({
+      apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+      apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+    });
   }
 
-  saveToStorage() {
-    localStorage.setItem('taskflow-tasks', JSON.stringify(this.tasks));
+  formatTaskData(data) {
+    return {
+      ...data,
+      id: data.Id || data.id,
+      projectId: data.project_id || data.projectId,
+      title: data.title || data.Name || '',
+      description: data.description || '',
+      status: data.status || 'todo',
+      priority: data.priority || 'medium',
+      type: data.type || 'task',
+      isDeadline: data.is_deadline || false,
+      startDate: data.start_date || data.startDate,
+      dueDate: data.due_date || data.dueDate,
+      createdAt: data.CreatedOn || data.created_at || data.createdAt,
+      completedAt: data.completed_at || data.completedAt
+    };
   }
 
   async getAll() {
-    await delay(250);
-    return [...this.tasks];
+    try {
+      const apperClient = this.getApperClient();
+      const params = {
+        fields: this.allFields
+      };
+
+      const response = await apperClient.fetchRecords(this.tableName, params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return [];
+      }
+
+      return (response.data || []).map(task => this.formatTaskData(task));
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
+      return [];
+    }
   }
 
   async getById(id) {
-    await delay(200);
-    const task = this.tasks.find(t => t.id === id);
-    return task ? { ...task } : null;
+    try {
+      if (!id) {
+        throw new Error('Task ID is required');
+      }
+
+      const apperClient = this.getApperClient();
+      const params = {
+        fields: this.allFields
+      };
+
+      const response = await apperClient.getRecordById(this.tableName, id, params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+
+      return response.data ? this.formatTaskData(response.data) : null;
+    } catch (error) {
+      console.error('Error fetching task:', error);
+      toast.error('Failed to load task');
+      return null;
+    }
   }
 
   async getByProjectId(projectId) {
-    await delay(250);
-    return this.tasks.filter(t => t.projectId === projectId).map(t => ({ ...t }));
+    try {
+      if (!projectId) {
+        return [];
+      }
+
+      const apperClient = this.getApperClient();
+      const params = {
+        fields: this.allFields,
+        where: [
+          {
+            fieldName: "project_id",
+            operator: "EqualTo",
+            values: [parseInt(projectId)]
+          }
+        ]
+      };
+
+      const response = await apperClient.fetchRecords(this.tableName, params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return [];
+      }
+
+      return (response.data || []).map(task => this.formatTaskData(task));
+    } catch (error) {
+      console.error('Error fetching tasks by project:', error);
+      toast.error('Failed to load project tasks');
+      return [];
+    }
   }
 
-async create(taskData) {
-    await delay(350);
-    const task = {
-      ...taskData,
-      id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: taskData.type || 'task',
-      isDeadline: taskData.isDeadline || false,
-      createdAt: new Date().toISOString(),
-      completedAt: null
-    };
-    this.tasks.push(task);
-    this.saveToStorage();
-    return { ...task };
+  async create(taskData) {
+    try {
+      if (!taskData || typeof taskData !== 'object') {
+        throw new Error('Invalid task data provided');
+      }
+
+      const apperClient = this.getApperClient();
+      
+      // Only include updateable fields and format them properly
+      const recordData = {
+        title: taskData.title || '',
+        description: taskData.description || '',
+        status: taskData.status || 'todo',
+        priority: taskData.priority || 'medium',
+        type: taskData.type || 'task',
+        is_deadline: taskData.isDeadline || false,
+        created_at: new Date().toISOString()
+      };
+
+      // Add project_id as integer if provided
+      if (taskData.projectId) {
+        recordData.project_id = parseInt(taskData.projectId);
+      }
+
+      // Format dates properly
+      if (taskData.startDate) {
+        recordData.start_date = new Date(taskData.startDate).toISOString();
+      }
+      if (taskData.dueDate) {
+        recordData.due_date = new Date(taskData.dueDate).toISOString();
+      }
+
+      // Filter out any undefined fields
+      Object.keys(recordData).forEach(key => {
+        if (recordData[key] === undefined) {
+          delete recordData[key];
+        }
+      });
+
+      const params = {
+        records: [recordData]
+      };
+
+      const response = await apperClient.createRecord(this.tableName, params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const successfulRecords = response.results.filter(result => result.success);
+        const failedRecords = response.results.filter(result => !result.success);
+        
+        if (failedRecords.length > 0) {
+          console.error(`Failed to create ${failedRecords.length} records:${failedRecords}`);
+          
+          failedRecords.forEach(record => {
+            record.errors?.forEach(error => {
+              toast.error(`${error.fieldLabel}: ${error.message}`);
+            });
+            if (record.message) toast.error(record.message);
+          });
+        }
+        
+        if (successfulRecords.length > 0) {
+          return this.formatTaskData(successfulRecords[0].data);
+        }
+      }
+
+      throw new Error('Failed to create task');
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error('Failed to create task');
+      throw error;
+    }
   }
 
   async update(id, updates) {
-    await delay(300);
-    const index = this.tasks.findIndex(t => t.id === id);
-    if (index === -1) {
-      throw new Error('Task not found');
-    }
-
-    // Validate date ranges if both start and due dates are provided
-    if (updates.startDate && updates.dueDate) {
-      const startDate = new Date(updates.startDate);
-      const dueDate = new Date(updates.dueDate);
-      if (startDate > dueDate) {
-        throw new Error('Start date cannot be after due date');
+    try {
+      if (!id) {
+        throw new Error('Task ID is required');
       }
-    }
+      if (!updates || typeof updates !== 'object') {
+        throw new Error('Invalid update data provided');
+      }
 
-    this.tasks[index] = { ...this.tasks[index], ...updates };
-    this.saveToStorage();
-    return { ...this.tasks[index] };
+      const apperClient = this.getApperClient();
+      
+      // Only include updateable fields that are provided
+      const recordData = { Id: parseInt(id) };
+      
+      if (updates.title !== undefined) recordData.title = updates.title;
+      if (updates.description !== undefined) recordData.description = updates.description;
+      if (updates.status !== undefined) recordData.status = updates.status;
+      if (updates.priority !== undefined) recordData.priority = updates.priority;
+      if (updates.type !== undefined) recordData.type = updates.type;
+      if (updates.isDeadline !== undefined) recordData.is_deadline = updates.isDeadline;
+      
+      if (updates.projectId !== undefined) {
+        recordData.project_id = parseInt(updates.projectId);
+      }
+      
+      if (updates.startDate !== undefined) {
+        recordData.start_date = updates.startDate ? new Date(updates.startDate).toISOString() : null;
+      }
+      if (updates.dueDate !== undefined) {
+        recordData.due_date = updates.dueDate ? new Date(updates.dueDate).toISOString() : null;
+      }
+      if (updates.completedAt !== undefined) {
+        recordData.completed_at = updates.completedAt ? new Date(updates.completedAt).toISOString() : null;
+      }
+
+      const params = {
+        records: [recordData]
+      };
+
+      const response = await apperClient.updateRecord(this.tableName, params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const successfulUpdates = response.results.filter(result => result.success);
+        const failedUpdates = response.results.filter(result => !result.success);
+        
+        if (failedUpdates.length > 0) {
+          console.error(`Failed to update ${failedUpdates.length} records:${failedUpdates}`);
+          
+          failedUpdates.forEach(record => {
+            record.errors?.forEach(error => {
+              toast.error(`${error.fieldLabel}: ${error.message}`);
+            });
+            if (record.message) toast.error(record.message);
+          });
+        }
+        
+        if (successfulUpdates.length > 0) {
+          return this.formatTaskData(successfulUpdates[0].data);
+        }
+      }
+
+      throw new Error('Failed to update task');
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to update task');
+      throw error;
+    }
   }
 
   async delete(id) {
-    await delay(300);
-    const index = this.tasks.findIndex(t => t.id === id);
-    if (index === -1) {
-throw new Error('Task not found');
-    }
-    this.tasks.splice(index, 1);
-    this.saveToStorage();
-    return true;
-  }
-
-  async updateTaskDates(id, startDate, dueDate) {
-    await delay(250);
-    const index = this.tasks.findIndex(t => t.id === id);
-    if (index === -1) {
-      throw new Error('Task not found');
-    }
-
-    // Validate date range
-    if (startDate && dueDate) {
-      const start = new Date(startDate);
-      const due = new Date(dueDate);
-      if (start > due) {
-        throw new Error('Start date cannot be after due date');
+    try {
+      if (!id) {
+        throw new Error('Task ID is required');
       }
-    }
 
-    this.tasks[index] = {
-      ...this.tasks[index],
-      startDate: startDate || this.tasks[index].startDate,
-      dueDate: dueDate || this.tasks[index].dueDate
-    };
-this.saveToStorage();
-    return { ...this.tasks[index] };
-  }
+      const apperClient = this.getApperClient();
+      const params = {
+        RecordIds: [parseInt(id)]
+      };
 
-  async addDependency(sourceTaskId, targetTaskId) {
-    await delay(250);
-    
-    // Validate tasks exist
-    const sourceTask = this.tasks.find(t => t.id === sourceTaskId);
-    const targetTask = this.tasks.find(t => t.id === targetTaskId);
-    
-    if (!sourceTask || !targetTask) {
-      throw new Error('One or both tasks not found');
-    }
-
-    // Check for circular dependency
-    const { detectCircularDependency } = await import('../index');
-    if (detectCircularDependency(this.tasks, sourceTaskId, targetTaskId)) {
-      throw new Error('Cannot create dependency: would create circular dependency');
-    }
-
-    // Add dependency
-    const targetIndex = this.tasks.findIndex(t => t.id === targetTaskId);
-    if (!this.tasks[targetIndex].dependencies) {
-      this.tasks[targetIndex].dependencies = [];
-    }
-    
-    if (!this.tasks[targetIndex].dependencies.includes(sourceTaskId)) {
-      this.tasks[targetIndex].dependencies.push(sourceTaskId);
-      this.saveToStorage();
-    }
-
-    return { ...this.tasks[targetIndex] };
-  }
-
-  async removeDependency(taskId, dependencyId) {
-    await delay(200);
-    
-    const taskIndex = this.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) {
-      throw new Error('Task not found');
-    }
-
-    const task = this.tasks[taskIndex];
-    if (task.dependencies) {
-      task.dependencies = task.dependencies.filter(depId => depId !== dependencyId);
-      this.saveToStorage();
-    }
-
-    return { ...this.tasks[taskIndex] };
-  }
-
-async rescheduleDependent(taskId, newStartDate, newEndDate) {
-    await delay(300);
-    
-    const rescheduledTasks = [];
-    const errors = [];
-    
-    const processTask = async (parentTaskId, parentEndDate, depth = 0) => {
-      // Prevent infinite recursion
-      if (depth > 10) {
-        errors.push(`Maximum dependency depth exceeded for task ${parentTaskId}`);
-        return;
-      }
+      const response = await apperClient.deleteRecord(this.tableName, params);
       
-      const dependentTasks = this.tasks.filter(task => 
-        task.dependencies && task.dependencies.includes(parentTaskId)
-      );
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return false;
+      }
 
-      for (const dependentTask of dependentTasks) {
-        try {
-          // Calculate task duration
-          const taskStartDate = new Date(dependentTask.startDate || dependentTask.dueDate);
-          const taskEndDate = new Date(dependentTask.dueDate || dependentTask.startDate);
-          const taskDuration = Math.max(1, Math.ceil((taskEndDate - taskStartDate) / (24 * 60 * 60 * 1000)) + 1);
+      if (response.results) {
+        const successfulDeletions = response.results.filter(result => result.success);
+        const failedDeletions = response.results.filter(result => !result.success);
+        
+        if (failedDeletions.length > 0) {
+          console.error(`Failed to delete ${failedDeletions.length} records:${failedDeletions}`);
           
-          // Schedule dependent task to start after parent task ends
-          const newDependentStartDate = new Date(parentEndDate);
-          newDependentStartDate.setDate(newDependentStartDate.getDate() + 1);
-          
-          const newDependentEndDate = new Date(newDependentStartDate);
-          newDependentEndDate.setDate(newDependentEndDate.getDate() + taskDuration - 1);
-
-          // Validate the new dates don't conflict with other constraints
-          if (dependentTask.constraints) {
-            const maxStartDate = dependentTask.constraints.maxStartDate ? new Date(dependentTask.constraints.maxStartDate) : null;
-            const maxEndDate = dependentTask.constraints.maxEndDate ? new Date(dependentTask.constraints.maxEndDate) : null;
-            
-            if (maxStartDate && newDependentStartDate > maxStartDate) {
-              errors.push(`Task ${dependentTask.title} cannot start after ${maxStartDate.toDateString()}`);
-              continue;
-            }
-            
-            if (maxEndDate && newDependentEndDate > maxEndDate) {
-              errors.push(`Task ${dependentTask.title} cannot end after ${maxEndDate.toDateString()}`);
-              continue;
-            }
-          }
-
-          // Update the task
-          await this.update(dependentTask.id, {
-            startDate: newDependentStartDate.toISOString(),
-            dueDate: newDependentEndDate.toISOString()
+          failedDeletions.forEach(record => {
+            if (record.message) toast.error(record.message);
           });
-
-          rescheduledTasks.push({
-            id: dependentTask.id,
-            title: dependentTask.title,
-            oldStart: taskStartDate,
-            newStart: newDependentStartDate,
-            oldEnd: taskEndDate,
-            newEnd: newDependentEndDate
-          });
-
-          // Recursively reschedule tasks dependent on this one
-          await processTask(dependentTask.id, newDependentEndDate, depth + 1);
-          
-        } catch (error) {
-          errors.push(`Failed to reschedule ${dependentTask.title}: ${error.message}`);
         }
+        
+        return successfulDeletions.length > 0;
       }
-    };
 
-    await processTask(taskId, newEndDate);
-
-    if (errors.length > 0) {
-      throw new Error(`Rescheduling completed with errors: ${errors.join('; ')}`);
+      return false;
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+      throw error;
     }
-
-    return {
-      success: true,
-      rescheduledTasks,
-      message: `Successfully rescheduled ${rescheduledTasks.length} dependent tasks`
-    };
-  }
-
-  async updateDependencies(taskId, dependencies) {
-    await delay(250);
-    
-    const taskIndex = this.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) {
-      throw new Error('Task not found');
-    }
-
-    // Validate all dependency IDs exist
-    for (const depId of dependencies) {
-      if (!this.tasks.find(t => t.id === depId)) {
-        throw new Error(`Dependency task ${depId} not found`);
-      }
-    }
-
-    // Check for circular dependencies
-    const { detectCircularDependency } = await import('../index');
-    for (const depId of dependencies) {
-      if (detectCircularDependency(this.tasks, depId, taskId)) {
-        throw new Error('Cannot update dependencies: would create circular dependency');
-      }
-    }
-
-    this.tasks[taskIndex].dependencies = [...dependencies];
-    this.saveToStorage();
-    
-    return { ...this.tasks[taskIndex] };
-  }
-
-  async getDependencies(taskId) {
-    await delay(150);
-    
-    const task = this.tasks.find(t => t.id === taskId);
-    if (!task) {
-      throw new Error('Task not found');
-    }
-
-    const dependencies = [];
-    if (task.dependencies) {
-      for (const depId of task.dependencies) {
-        const depTask = this.tasks.find(t => t.id === depId);
-        if (depTask) {
-          dependencies.push({ ...depTask });
-        }
-      }
-    }
-
-return dependencies;
-  }
-
-  async createMilestone(milestoneData) {
-    await delay(350);
-    const milestone = {
-      ...milestoneData,
-      id: `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: 'milestone',
-      isDeadline: milestoneData.isDeadline || false,
-      createdAt: new Date().toISOString(),
-      completedAt: null
-    };
-    this.tasks.push(milestone);
-    this.saveToStorage();
-    return { ...milestone };
-  }
-
-  async getMilestones(projectId = null) {
-    await delay(200);
-    const milestones = this.tasks.filter(t => t.type === 'milestone');
-    return projectId 
-      ? milestones.filter(m => m.projectId === projectId).map(m => ({ ...m }))
-      : milestones.map(m => ({ ...m }));
-  }
-
-  async getDeadlines(projectId = null) {
-    await delay(200);
-    const deadlines = this.tasks.filter(t => t.isDeadline === true);
-    return projectId 
-      ? deadlines.filter(d => d.projectId === projectId).map(d => ({ ...d }))
-      : deadlines.map(d => ({ ...d }));
-  }
-
-  async updateMilestone(id, updates) {
-    await delay(300);
-    const index = this.tasks.findIndex(t => t.id === id && t.type === 'milestone');
-    if (index === -1) {
-      throw new Error('Milestone not found');
-    }
-
-    // Validate milestone-specific constraints
-    if (updates.type && updates.type !== 'milestone') {
-      throw new Error('Cannot change milestone type');
-    }
-
-    this.tasks[index] = { 
-      ...this.tasks[index], 
-      ...updates,
-      type: 'milestone' // Ensure type remains milestone
-    };
-    this.saveToStorage();
-    return { ...this.tasks[index] };
-  }
-
-  async deleteMilestone(id) {
-    await delay(300);
-    const index = this.tasks.findIndex(t => t.id === id && t.type === 'milestone');
-    if (index === -1) {
-      throw new Error('Milestone not found');
-    }
-
-    // Check for dependencies before deletion
-    const dependentTasks = this.tasks.filter(task => 
-      task.dependencies && task.dependencies.includes(id)
-    );
-    
-    if (dependentTasks.length > 0) {
-      throw new Error(`Cannot delete milestone: ${dependentTasks.length} tasks depend on it`);
-    }
-
-    this.tasks.splice(index, 1);
-    this.saveToStorage();
-    return true;
   }
 }
 

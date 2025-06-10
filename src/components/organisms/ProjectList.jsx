@@ -26,7 +26,7 @@ const ProjectList = () => {
     const loadProjects = async () => {
         setLoading(true);
         setError(null);
-        try {
+try {
             const result = await projectService.getAll();
             const activeProjects = result.filter(p => !p.archived);
 
@@ -74,8 +74,7 @@ const ProjectList = () => {
                     { id: 'done', name: 'Done', position: 2, color: '#10B981' }
                 ]
             };
-
-            const created = await projectService.create(project);
+const created = await projectService.create(project);
             setProjects(prev => [...prev, { ...created, taskCount: 0, completedTasks: 0, progress: 0 }]);
             setNewProject({ name: '', description: '' });
             setShowCreateProject(false);

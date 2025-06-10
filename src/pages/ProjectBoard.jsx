@@ -33,7 +33,7 @@ const ProjectBoard = () => {
   const loadProjectData = async () => {
     setLoading(true);
     setError(null);
-    try {
+try {
       const [projectData, tasksData] = await Promise.all([
         projectService.getById(id),
         taskService.getByProjectId(id)
@@ -92,9 +92,7 @@ const ProjectBoard = () => {
         status: columnId,
         completedAt: columnId === 'done' ? new Date().toISOString() : null
       };
-
-      await taskService.update(draggedTask.id, updatedTask);
-      
+await taskService.update(draggedTask.id, updatedTask);
       setTasks(prev => prev.map(task => 
         task.id === draggedTask.id ? updatedTask : task
       ));
@@ -122,8 +120,7 @@ const ProjectBoard = () => {
         projectId: id,
         dueDate: newTask.dueDate || null
       };
-
-      const created = await taskService.create(task);
+const created = await taskService.create(task);
       setTasks(prev => [...prev, created]);
       setNewTask({
         title: '',
@@ -167,9 +164,8 @@ const ProjectBoard = () => {
         dueDate: newTask.dueDate || null,
         status: newTask.status
       };
-
-      await taskService.update(selectedTask.id, updatedTask);
-      setTasks(prev => prev.map(task => 
+await taskService.update(selectedTask.id, updatedTask);
+      setTasks(prev => prev.map(task =>
         task.id === selectedTask.id ? updatedTask : task
       ));
       setShowTaskModal(false);
@@ -183,7 +179,7 @@ const ProjectBoard = () => {
   const handleDeleteTask = async (taskId) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
 
-    try {
+try {
       await taskService.delete(taskId);
       setTasks(prev => prev.filter(task => task.id !== taskId));
       toast.success('Task deleted successfully');

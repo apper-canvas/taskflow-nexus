@@ -17,7 +17,7 @@ const Archive = () => {
   const loadArchivedProjects = async () => {
     setLoading(true);
     setError(null);
-    try {
+try {
       const projects = await projectService.getAll();
       const archived = projects.filter(p => p.archived);
       
@@ -48,9 +48,8 @@ const Archive = () => {
   };
 
   const handleRestoreProject = async (projectId) => {
-    try {
-      const project = archivedProjects.find(p => p.id === projectId);
-      await projectService.update(projectId, { ...project, archived: false });
+try {
+      await projectService.update(projectId, { archived: false });
       setArchivedProjects(prev => prev.filter(p => p.id !== projectId));
       toast.success('Project restored successfully');
     } catch (error) {
@@ -67,10 +66,10 @@ const Archive = () => {
       // Delete all tasks first
       const tasks = await taskService.getByProjectId(projectId);
       await Promise.all(tasks.map(task => taskService.delete(task.id)));
-      
-      // Then delete the project
+// Then delete the project
       await projectService.delete(projectId);
       setArchivedProjects(prev => prev.filter(p => p.id !== projectId));
+      toast.success('Project deleted permanently');
       toast.success('Project deleted permanently');
     } catch (error) {
       toast.error('Failed to delete project');
