@@ -62,9 +62,21 @@ const [showCreateProject, setShowCreateProject] = useState(false);
 const handleShowCreateProject = async () => {
         try {
             setFormLoading(true);
-            setShowCreateProject(true);
-            // Reset form state
+            
+            // Clear any previous error states
+            setError(null);
+            
+            // Clear any existing toast notifications
+            toast.dismiss();
+            
+            // Reset form state to pristine condition
             setNewProject({ name: '', description: '' });
+            
+            // Reset any submission states
+            setCreating(false);
+            
+            // Show the form modal
+            setShowCreateProject(true);
         } catch (error) {
             console.error('Error displaying form:', error);
             toast.error('Failed to load project form');
