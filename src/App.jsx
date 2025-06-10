@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import Layout from './Layout';
-import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
-import ProjectBoard from './pages/ProjectBoard';
-import Archive from './pages/Archive';
-import Settings from './pages/Settings';
-import NotFound from './pages/NotFound';
+import HomePage from '@/components/pages/HomePage';
+import DashboardPage from '@/components/pages/DashboardPage';
+import ProjectBoardPage from '@/components/pages/ProjectBoardPage';
+import ArchivePage from '@/components/pages/ArchivePage';
+import SettingsPage from '@/components/pages/SettingsPage';
+import NotFoundPage from '@/components/pages/NotFoundPage';
 
 function App() {
   return (
@@ -15,12 +15,12 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="home" element={<Home />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="project/:id" element={<ProjectBoard />} />
-            <Route path="archive" element={<Archive />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
+<Route path="home" element={<HomePage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="project/:id" element={<ProjectBoardPage />} />
+            <Route path="archive" element={<ArchivePage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
         

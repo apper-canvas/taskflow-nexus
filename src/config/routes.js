@@ -1,7 +1,7 @@
-import Home from '../pages/Home';
-import Dashboard from '../pages/Dashboard';
-import Archive from '../pages/Archive';
-import Settings from '../pages/Settings';
+import HomePage from '@/components/pages/HomePage';
+import DashboardPage from '@/components/pages/DashboardPage';
+import ArchivePage from '@/components/pages/ArchivePage';
+import SettingsPage from '@/components/pages/SettingsPage';
 
 export const routes = {
   home: {
@@ -9,28 +9,28 @@ export const routes = {
     label: 'Home',
     path: '/home',
     icon: 'Home',
-    component: Home
+component: HomePage
   },
   dashboard: {
     id: 'dashboard',
     label: 'Dashboard',
     path: '/dashboard',
     icon: 'LayoutDashboard',
-    component: Dashboard
+component: DashboardPage
   },
   archive: {
     id: 'archive',
     label: 'Archive',
     path: '/archive',
     icon: 'Archive',
-    component: Archive
+component: ArchivePage
   },
   settings: {
     id: 'settings',
     label: 'Settings',
     path: '/settings',
     icon: 'Settings',
-    component: Settings
+component: SettingsPage
   }
 };
 
