@@ -2,17 +2,29 @@ import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInDays, parseISO, isValid } from 'date-fns';
 import { toast } from 'react-toastify';
+import { v4 as uuidv4 } from 'uuid';
 import ApperIcon from '@/components/ApperIcon';
 import Text from '@/components/atoms/Text';
 import Button from '@/components/atoms/Button';
+import { taskService } from '@/services';
 
-const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
+const TimelineView = ({ tasks, onUpdateTask, onEditTask, onTaskUpdate }) => {
     const [zoomLevel, setZoomLevel] = useState('week'); // day, week, month
-    const [currentDate, setCurrentDate] = useState(new Date());
+const [currentDate, setCurrentDate] = useState(new Date());
     const [draggedTask, setDraggedTask] = useState(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [isCreatingDependency, setIsCreatingDependency] = useState(false);
+    const [dependencySource, setDependencySource] = useState(null);
+    const [tooltip, setTooltip] = useState({ task: null, visible: false, x: 0, y: 0 });
+    const [filters, setFilters] = useState({
+        priority: 'all',
+        status: 'all',
+        assignee: 'all',
+        showMilestones: true,
+        showDeadlines: true
+    });
+    const [sortBy, setSortBy] = useState('startDate'); // startDate, priority, title
     const timelineRef = useRef(null);
-
     // Calculate timeline range based on zoom level
     const timelineRange = useMemo(() => {
         let start, end, days;
@@ -52,14 +64,30 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
         }
     }, [zoomLevel]);
 
-    // Filter and position tasks within timeline range
+// Filter and position tasks within timeline range
     const timelineTasks = useMemo(() => {
         return tasks
             .filter(task => {
+                // Date filter
                 if (!task.startDate && !task.dueDate) return false;
                 const taskStart = task.startDate ? parseISO(task.startDate) : parseISO(task.dueDate);
                 const taskEnd = task.dueDate ? parseISO(task.dueDate) : taskStart;
-                return isValid(taskStart) && isValid(taskEnd);
+                if (!isValid(taskStart) || !isValid(taskEnd)) return false;
+
+                // Priority filter
+                if (filters.priority !== 'all' && task.priority !== filters.priority) return false;
+
+                // Status filter
+                if (filters.status !== 'all' && task.status !== filters.status) return false;
+
+                // Assignee filter
+                if (filters.assignee !== 'all' && task.assignee !== filters.assignee) return false;
+
+                // Type filters
+                if (!filters.showMilestones && task.type === 'milestone') return false;
+                if (!filters.showDeadlines && task.isDeadline) return false;
+
+                return true;
             })
             .map(task => {
                 const taskStart = task.startDate ? parseISO(task.startDate) : parseISO(task.dueDate);
@@ -76,8 +104,18 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
                     taskEnd
                 };
             })
-            .sort((a, b) => a.startOffset - b.startOffset);
-    }, [tasks, timelineRange]);
+            .sort((a, b) => {
+                switch (sortBy) {
+                    case 'priority':
+                        const priorityOrder = { high: 3, medium: 2, low: 1 };
+                        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+                    case 'title':
+                        return a.title.localeCompare(b.title);
+                    default:
+                        return a.startOffset - b.startOffset;
+                }
+            });
+    }, [tasks, timelineRange, filters, sortBy]);
 
     // Get priority color
     const getPriorityColor = (priority) => {
@@ -103,18 +141,64 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
             case 'month': daysToMove = 30; break;
             default: daysToMove = 14;
         }
-        
-        setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysToMove));
+setCurrentDate(prev => addDays(prev, direction === 'next' ? daysToMove : -daysToMove));
     };
+
+    // Handle dependency creation
+    const handleCreateDependency = useCallback(async (sourceTaskId, targetTaskId) => {
+        if (sourceTaskId === targetTaskId) {
+            toast.error('A task cannot depend on itself');
+            return;
+        }
+
+        try {
+            await taskService.addDependency(sourceTaskId, targetTaskId);
+            toast.success('Dependency created successfully');
+            if (onTaskUpdate) onTaskUpdate();
+        } catch (error) {
+            toast.error(error.message || 'Failed to create dependency');
+        }
+    }, [onTaskUpdate]);
+
+    // Handle dependency removal
+    const handleRemoveDependency = useCallback(async (taskId, dependencyId) => {
+        try {
+            await taskService.removeDependency(taskId, dependencyId);
+            toast.success('Dependency removed successfully');
+            if (onTaskUpdate) onTaskUpdate();
+        } catch (error) {
+            toast.error('Failed to remove dependency');
+        }
+    }, [onTaskUpdate]);
+
+    // Handle tooltip
+    const handleTooltip = useCallback((task, visible, event = null) => {
+        if (visible && task && event) {
+            const rect = event.target.getBoundingClientRect();
+            setTooltip({
+                task,
+                visible: true,
+                x: rect.left + rect.width / 2,
+                y: rect.top - 10
+            });
+        } else {
+            setTooltip({ task: null, visible: false, x: 0, y: 0 });
+        }
+    }, []);
 
     // Handle task drag start
     const handleDragStart = (e, task) => {
+        if (isCreatingDependency) {
+            e.preventDefault();
+            return;
+        }
+
         setDraggedTask(task);
         const rect = e.target.getBoundingClientRect();
         setDragOffset({
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
-        });
+});
         e.dataTransfer.effectAllowed = 'move';
     };
 
@@ -147,14 +231,67 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
             };
 
             await onUpdateTask(draggedTask.id, updatedTask);
+            
+            // Trigger automatic rescheduling of dependent tasks
+            await taskService.rescheduleDependent(draggedTask.id, newStartDate, newEndDate);
+            
             toast.success('Task dates updated successfully');
+            if (onTaskUpdate) onTaskUpdate();
         } catch (error) {
             toast.error('Failed to update task dates');
         }
 
         setDraggedTask(null);
         setDragOffset({ x: 0, y: 0 });
-    }, [draggedTask, dragOffset, dayWidth, timelineRange.start, onUpdateTask]);
+    }, [draggedTask, dragOffset, dayWidth, timelineRange.start, onUpdateTask, onTaskUpdate]);
+
+    // Handle task click for dependency creation
+    const handleTaskClick = useCallback((task, event) => {
+        if (isCreatingDependency) {
+            if (dependencySource) {
+                handleCreateDependency(dependencySource.id, task.id);
+                setIsCreatingDependency(false);
+                setDependencySource(null);
+            } else {
+                setDependencySource(task);
+                toast.info(`Click another task to create dependency from "${task.title}"`);
+            }
+        } else {
+            onEditTask(task);
+        }
+    }, [isCreatingDependency, dependencySource, handleCreateDependency, onEditTask]);
+
+    // Generate dependency arrows
+    const generateDependencyArrows = useCallback(() => {
+        const arrows = [];
+        
+        timelineTasks.forEach(task => {
+            if (task.dependencies && task.dependencies.length > 0) {
+                task.dependencies.forEach(depId => {
+                    const sourceTask = timelineTasks.find(t => t.id === depId);
+                    if (sourceTask) {
+                        const sourceX = (sourceTask.startOffset + sourceTask.duration) * dayWidth;
+                        const targetX = task.startOffset * dayWidth;
+                        const sourceY = timelineTasks.indexOf(sourceTask) * 60 + 30;
+                        const targetY = timelineTasks.indexOf(task) * 60 + 30;
+                        
+                        const key = `${sourceTask.id}-${task.id}`;
+                        arrows.push({
+                            key,
+                            sourceX: sourceX + 200,
+                            sourceY: sourceY + 60,
+                            targetX: targetX + 200,
+                            targetY: targetY + 60,
+                            sourceTask,
+                            targetTask: task
+                        });
+                    }
+                });
+            }
+        });
+        
+        return arrows;
+    }, [timelineTasks, dayWidth]);
 
     // Generate timeline header dates
     const generateTimelineHeader = () => {
@@ -166,10 +303,79 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
         return dates;
     };
 
-    return (
-        <div className="h-full flex flex-col bg-white">
+return (
+        <div className={`h-full flex flex-col bg-white ${isCreatingDependency ? 'dependency-creating' : ''}`}>
             {/* Timeline Controls */}
             <div className="flex-shrink-0 p-4 border-b border-gray-200">
+                {/* Filters and Sorting */}
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 mb-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Text as="span" className="text-sm font-medium text-gray-700">Filters:</Text>
+                        <select
+                            value={filters.priority}
+                            onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                            className="text-xs border border-gray-300 rounded px-2 py-1"
+                        >
+                            <option value="all">All Priorities</option>
+                            <option value="high">High Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="low">Low Priority</option>
+                        </select>
+                        <select
+                            value={filters.status}
+                            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                            className="text-xs border border-gray-300 rounded px-2 py-1"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="todo">To Do</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="done">Done</option>
+                        </select>
+                        <label className="flex items-center space-x-1 text-xs">
+                            <input
+                                type="checkbox"
+                                checked={filters.showMilestones}
+                                onChange={(e) => setFilters(prev => ({ ...prev, showMilestones: e.target.checked }))}
+                                className="rounded"
+                            />
+                            <span>Milestones</span>
+                        </label>
+                        <label className="flex items-center space-x-1 text-xs">
+                            <input
+                                type="checkbox"
+                                checked={filters.showDeadlines}
+                                onChange={(e) => setFilters(prev => ({ ...prev, showDeadlines: e.target.checked }))}
+                                className="rounded"
+                            />
+                            <span>Deadlines</span>
+                        </label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                        <Text as="span" className="text-sm font-medium text-gray-700">Sort by:</Text>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="text-xs border border-gray-300 rounded px-2 py-1"
+                        >
+                            <option value="startDate">Start Date</option>
+                            <option value="priority">Priority</option>
+                            <option value="title">Title</option>
+                        </select>
+                        <Button
+                            onClick={() => setIsCreatingDependency(!isCreatingDependency)}
+                            className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+                                isCreatingDependency
+                                    ? 'bg-primary-600 text-white'
+                                    : 'border border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            <ApperIcon name="GitBranch" size={14} className="mr-1" />
+                            {isCreatingDependency ? 'Cancel Dependencies' : 'Create Dependencies'}
+                        </Button>
+                    </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                     {/* Navigation */}
                     <div className="flex items-center space-x-2">
@@ -238,7 +444,7 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
                         </div>
                     </div>
 
-                    {/* Timeline Content */}
+{/* Timeline Content */}
                     <div
                         ref={timelineRef}
                         className="relative timeline-grid"
@@ -246,6 +452,39 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
                     >
+                        {/* Dependency Arrows SVG */}
+                        <svg
+                            className="absolute inset-0 pointer-events-none"
+                            style={{ zIndex: 15 }}
+                        >
+                            <defs>
+                                <marker
+                                    id="arrowhead"
+                                    markerWidth="10"
+                                    markerHeight="7"
+                                    refX="9"
+                                    refY="3.5"
+                                    orient="auto"
+                                >
+                                    <polygon
+                                        points="0 0, 10 3.5, 0 7"
+                                        fill="#6366f1"
+                                    />
+                                </marker>
+                            </defs>
+                            {generateDependencyArrows().map(arrow => (
+                                <g key={arrow.key}>
+                                    <path
+                                        d={`M ${arrow.sourceX} ${arrow.sourceY} 
+                                           Q ${arrow.sourceX + (arrow.targetX - arrow.sourceX) / 2} ${arrow.sourceY}, 
+                                             ${arrow.targetX} ${arrow.targetY}`}
+                                        className="dependency-arrow"
+                                        onClick={() => handleRemoveDependency(arrow.targetTask.id, arrow.sourceTask.id)}
+                                        style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                                    />
+                                </g>
+                            ))}
+                        </svg>
                         {/* Task Rows */}
                         <AnimatePresence>
                             {timelineTasks.map((task, index) => (
@@ -273,14 +512,16 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
                                             className={`timeline-task absolute top-1/2 transform -translate-y-1/2 rounded-md border-2 cursor-pointer group ${getPriorityColor(task.priority)} ${
                                                 draggedTask?.id === task.id ? 'dragging' : ''
                                             }`}
-                                            style={{
+style={{
                                                 left: task.startOffset * dayWidth + 8,
                                                 width: Math.max(dayWidth - 16, task.duration * dayWidth - 16),
                                                 height: '24px'
                                             }}
                                             draggable
                                             onDragStart={(e) => handleDragStart(e, task)}
-                                            onClick={() => onEditTask(task)}
+                                            onClick={(e) => handleTaskClick(task, e)}
+                                            onMouseEnter={(e) => handleTooltip(task, true, e)}
+                                            onMouseLeave={() => handleTooltip(null, false)}
                                         >
                                             <div className="flex items-center justify-between h-full px-2">
                                                 <Text as="span" className="text-xs font-medium text-white truncate">
@@ -315,10 +556,45 @@ const TimelineView = ({ tasks, onUpdateTask, onEditTask }) => {
                                     </Text>
                                 </div>
                             </div>
-                        )}
+)}
                     </div>
                 </div>
             </div>
+
+            {/* Tooltip */}
+            {tooltip.visible && tooltip.task && (
+                <div
+                    className="tooltip"
+                    style={{
+                        left: tooltip.x,
+                        top: tooltip.y - 50
+                    }}
+                >
+                    <div className="font-medium mb-1">{tooltip.task.title}</div>
+                    <div className="text-xs opacity-90 mb-1">
+                        Priority: <span className="capitalize">{tooltip.task.priority}</span>
+                    </div>
+                    <div className="text-xs opacity-90 mb-1">
+                        Status: <span className="capitalize">{tooltip.task.status || 'Not set'}</span>
+                    </div>
+                    {tooltip.task.assignee && (
+                        <div className="text-xs opacity-90 mb-1">
+                            Assignee: {tooltip.task.assignee}
+                        </div>
+                    )}
+                    {tooltip.task.description && (
+                        <div className="text-xs opacity-90 mb-1">
+                            {tooltip.task.description.substring(0, 100)}
+                            {tooltip.task.description.length > 100 ? '...' : ''}
+                        </div>
+                    )}
+                    {tooltip.task.dependencies && tooltip.task.dependencies.length > 0 && (
+                        <div className="text-xs opacity-90">
+                            Dependencies: {tooltip.task.dependencies.length}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

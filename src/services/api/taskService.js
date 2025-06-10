@@ -42,9 +42,9 @@ class TaskService {
     this.tasks.push(task);
     this.saveToStorage();
     return { ...task };
-  }
+}
 
-async update(id, updates) {
+  async update(id, updates) {
     await delay(300);
     const index = this.tasks.findIndex(t => t.id === id);
     if (index === -1) {
@@ -69,11 +69,10 @@ async update(id, updates) {
     await delay(300);
     const index = this.tasks.findIndex(t => t.id === id);
     if (index === -1) {
-      throw new Error('Task not found');
+throw new Error('Task not found');
     }
     this.tasks.splice(index, 1);
     this.saveToStorage();
-this.saveToStorage();
     return true;
   }
 
@@ -98,9 +97,138 @@ this.saveToStorage();
       startDate: startDate || this.tasks[index].startDate,
       dueDate: dueDate || this.tasks[index].dueDate
     };
-    
-    this.saveToStorage();
+this.saveToStorage();
     return { ...this.tasks[index] };
   }
+
+  async addDependency(sourceTaskId, targetTaskId) {
+    await delay(250);
+    
+    // Validate tasks exist
+    const sourceTask = this.tasks.find(t => t.id === sourceTaskId);
+    const targetTask = this.tasks.find(t => t.id === targetTaskId);
+    
+    if (!sourceTask || !targetTask) {
+      throw new Error('One or both tasks not found');
+    }
+
+    // Check for circular dependency
+    const { detectCircularDependency } = await import('../index');
+    if (detectCircularDependency(this.tasks, sourceTaskId, targetTaskId)) {
+      throw new Error('Cannot create dependency: would create circular dependency');
+    }
+
+    // Add dependency
+    const targetIndex = this.tasks.findIndex(t => t.id === targetTaskId);
+    if (!this.tasks[targetIndex].dependencies) {
+      this.tasks[targetIndex].dependencies = [];
+    }
+    
+    if (!this.tasks[targetIndex].dependencies.includes(sourceTaskId)) {
+      this.tasks[targetIndex].dependencies.push(sourceTaskId);
+      this.saveToStorage();
+    }
+
+    return { ...this.tasks[targetIndex] };
+  }
+
+  async removeDependency(taskId, dependencyId) {
+    await delay(200);
+    
+    const taskIndex = this.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) {
+      throw new Error('Task not found');
+    }
+
+    const task = this.tasks[taskIndex];
+    if (task.dependencies) {
+      task.dependencies = task.dependencies.filter(depId => depId !== dependencyId);
+      this.saveToStorage();
+    }
+
+    return { ...this.tasks[taskIndex] };
+  }
+
+  async rescheduleDependent(taskId, newStartDate, newEndDate) {
+    await delay(300);
+    
+    const dependentTasks = this.tasks.filter(task => 
+      task.dependencies && task.dependencies.includes(taskId)
+    );
+
+    for (const dependentTask of dependentTasks) {
+      const taskStartDate = new Date(dependentTask.startDate || dependentTask.dueDate);
+      const taskEndDate = new Date(dependentTask.dueDate || dependentTask.startDate);
+      const taskDuration = Math.max(1, Math.ceil((taskEndDate - taskStartDate) / (24 * 60 * 60 * 1000)) + 1);
+      
+      // Schedule dependent task to start after parent task ends
+      const newDependentStartDate = new Date(newEndDate);
+      newDependentStartDate.setDate(newDependentStartDate.getDate() + 1);
+      
+      const newDependentEndDate = new Date(newDependentStartDate);
+      newDependentEndDate.setDate(newDependentEndDate.getDate() + taskDuration - 1);
+
+      await this.update(dependentTask.id, {
+        startDate: newDependentStartDate.toISOString(),
+        dueDate: newDependentEndDate.toISOString()
+      });
+
+      // Recursively reschedule tasks dependent on this one
+      await this.rescheduleDependent(dependentTask.id, newDependentStartDate, newDependentEndDate);
+    }
+
+    return true;
+  }
+
+  async updateDependencies(taskId, dependencies) {
+    await delay(250);
+    
+    const taskIndex = this.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) {
+      throw new Error('Task not found');
+    }
+
+    // Validate all dependency IDs exist
+    for (const depId of dependencies) {
+      if (!this.tasks.find(t => t.id === depId)) {
+        throw new Error(`Dependency task ${depId} not found`);
+      }
+    }
+
+    // Check for circular dependencies
+    const { detectCircularDependency } = await import('../index');
+    for (const depId of dependencies) {
+      if (detectCircularDependency(this.tasks, depId, taskId)) {
+        throw new Error('Cannot update dependencies: would create circular dependency');
+      }
+    }
+
+    this.tasks[taskIndex].dependencies = [...dependencies];
+    this.saveToStorage();
+    
+    return { ...this.tasks[taskIndex] };
+  }
+
+  async getDependencies(taskId) {
+    await delay(150);
+    
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    const dependencies = [];
+    if (task.dependencies) {
+      for (const depId of task.dependencies) {
+        const depTask = this.tasks.find(t => t.id === depId);
+        if (depTask) {
+          dependencies.push({ ...depTask });
+        }
+      }
+    }
+
+return dependencies;
+  }
 }
-export default new TaskService();
+
+export default TaskService;
