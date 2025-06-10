@@ -1,22 +1,29 @@
-// Services
-import ProjectService from './api/projectService';
-import TaskService from './api/taskService';
-import UserService from './api/userService';
-import NotificationService from './api/notificationService';
-import AnalyticsService from './api/analyticsService';
+// Services - Import singleton instances to avoid circular dependencies
+import projectService from './api/projectService.js';
+import taskService from './api/taskService.js';
+import userService from './api/userService.js';
+import notificationService from './api/notificationService.js';
+import analyticsService from './api/analyticsService.js';
 
-// Service instances
-export const projectService = new ProjectService();
-export const taskService = new TaskService();
-export const userService = new UserService();
-export const notificationService = new NotificationService();
-export const analyticsService = new AnalyticsService();
+// Export service instances
+export { projectService, taskService, userService, notificationService, analyticsService };
 
 // Utility functions
 export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Dependency management utilities
 export const detectCircularDependency = (tasks, sourceId, targetId) => {
+  // Input validation
+  if (!tasks || !Array.isArray(tasks)) {
+    console.warn('detectCircularDependency: Invalid tasks array provided');
+    return false;
+  }
+  
+  if (!sourceId || !targetId) {
+    console.warn('detectCircularDependency: Invalid source or target ID provided');
+    return false;
+  }
+
   // Helper function to detect cycles using DFS
   const hasCycle = (taskId, visited = new Set(), recursionStack = new Set()) => {
     if (recursionStack.has(taskId)) {
@@ -31,7 +38,7 @@ export const detectCircularDependency = (tasks, sourceId, targetId) => {
     recursionStack.add(taskId);
     
     const task = tasks.find(t => t.id === taskId);
-    if (task && task.dependencies) {
+    if (task && task.dependencies && Array.isArray(task.dependencies)) {
       for (const depId of task.dependencies) {
         if (hasCycle(depId, visited, recursionStack)) {
           return true;
@@ -56,10 +63,25 @@ export const detectCircularDependency = (tasks, sourceId, targetId) => {
   );
   
   // Check for cycles in the modified task graph
-  return hasCycle(targetId, new Set(), new Set());
+  try {
+    return hasCycle(targetId, new Set(), new Set());
+  } catch (error) {
+    console.error('Error detecting circular dependency:', error);
+    return true; // Assume circular dependency exists if error occurs
+  }
 };
 
 export const calculateTaskEndDate = (startDate, duration = 1) => {
-  const start = new Date(startDate);
-  return new Date(start.getTime() + (duration - 1) * 24 * 60 * 60 * 1000);
+  try {
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) {
+      throw new Error('Invalid start date provided');
+    }
+    
+    const durationDays = Math.max(1, Number(duration) || 1);
+    return new Date(start.getTime() + (durationDays - 1) * 24 * 60 * 60 * 1000);
+  } catch (error) {
+    console.error('Error calculating task end date:', error);
+    return new Date(); // Return current date as fallback
+  }
 };
