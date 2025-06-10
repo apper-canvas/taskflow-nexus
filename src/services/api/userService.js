@@ -1,4 +1,5 @@
-import { delay } from '../index';
+// Inline delay function to avoid circular dependency
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Mock user data
 const mockUsers = [
@@ -46,12 +47,21 @@ class UserService {
     }
 
     loadFromStorage() {
-        const stored = localStorage.getItem('taskflow-users');
-        return stored ? JSON.parse(stored) : [...mockUsers];
+        try {
+            const stored = localStorage.getItem('taskflow-users');
+            return stored ? JSON.parse(stored) : [...mockUsers];
+        } catch (error) {
+            console.error('Error loading users from storage:', error);
+            return [...mockUsers];
+        }
     }
 
     saveToStorage() {
-        localStorage.setItem('taskflow-users', JSON.stringify(this.users));
+        try {
+            localStorage.setItem('taskflow-users', JSON.stringify(this.users));
+        } catch (error) {
+            console.error('Error saving users to storage:', error);
+        }
     }
 
     async getAll() {
@@ -61,12 +71,17 @@ class UserService {
 
     async getById(id) {
         await delay(150);
+        if (!id) throw new Error('User ID is required');
         const user = this.users.find(u => u.id === id);
         return user ? { ...user } : null;
     }
 
     async create(userData) {
         await delay(300);
+        if (!userData?.name || !userData?.email) {
+            throw new Error('Name and email are required');
+        }
+        
         const user = {
             ...userData,
             id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -80,6 +95,8 @@ class UserService {
 
     async update(id, updates) {
         await delay(250);
+        if (!id) throw new Error('User ID is required');
+        
         const index = this.users.findIndex(u => u.id === id);
         if (index === -1) {
             throw new Error('User not found');
@@ -97,6 +114,8 @@ class UserService {
 
     async delete(id) {
         await delay(250);
+        if (!id) throw new Error('User ID is required');
+        
         const index = this.users.findIndex(u => u.id === id);
         if (index === -1) {
             throw new Error('User not found');
@@ -108,11 +127,13 @@ class UserService {
 
     async getByRole(role) {
         await delay(200);
+        if (!role) return [];
         return this.users.filter(u => u.role === role).map(u => ({ ...u }));
     }
 
     async checkPermission(userId, permission) {
         await delay(100);
+        if (!userId || !permission) return false;
         const user = this.users.find(u => u.id === userId);
         return user ? user.permissions.includes(permission) : false;
     }
@@ -133,8 +154,10 @@ class UserService {
     async getCurrentUser() {
         await delay(100);
         // In a real app, this would be based on authentication
-        return { ...this.users[0] }; // Return first user as current user
+        return this.users.length > 0 ? { ...this.users[0] } : null;
     }
 }
 
-export default UserService;
+// Export singleton instance
+const userService = new UserService();
+export default userService;

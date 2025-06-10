@@ -1,26 +1,39 @@
-// Services - Import singleton instances to avoid circular dependencies
-import projectService from './api/projectService.js';
-import taskService from './api/taskService.js';
-import userService from './api/userService.js';
-import notificationService from './api/notificationService.js';
-import analyticsService from './api/analyticsService.js';
-
-// Export service instances
-export { projectService, taskService, userService, notificationService, analyticsService };
-
 // Utility functions
 export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Dependency management utilities
+// Import service instances (not classes)
+import projectService from './api/projectService';
+import taskService from './api/taskService';
+import userService from './api/userService';
+import notificationService from './api/notificationService';
+import analyticsService from './api/analyticsService';
+
+// Export service instances directly
+export { 
+    projectService, 
+    taskService, 
+    userService, 
+    notificationService, 
+    analyticsService 
+};
+// Export services as default
+export default {
+    projectService,
+    taskService,
+    userService,
+    notificationService,
+    analyticsService
+};
+
+// Utility function to detect circular dependencies in task graph
 export const detectCircularDependency = (tasks, sourceId, targetId) => {
-  // Input validation
-  if (!tasks || !Array.isArray(tasks)) {
-    console.warn('detectCircularDependency: Invalid tasks array provided');
+  if (!sourceId || !targetId) {
+    console.warn('detectCircularDependency: Invalid source or target ID provided');
     return false;
   }
   
-  if (!sourceId || !targetId) {
-    console.warn('detectCircularDependency: Invalid source or target ID provided');
+  if (!Array.isArray(tasks)) {
+    console.warn('detectCircularDependency: Tasks must be an array');
     return false;
   }
 
