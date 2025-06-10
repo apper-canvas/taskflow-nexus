@@ -107,7 +107,7 @@ body {
     transform: rotate(45deg);
     background: linear-gradient(135deg, #f59e0b, #d97706) !important;
     border: 2px solid #b45309 !important;
-  }
+}
 
   .milestone-marker::before {
     content: '🏁';
@@ -162,11 +162,12 @@ body {
     position: absolute;
     top: 100%;
     left: 50%;
-    transform: translateX(-50%);
+transform: translateX(-50%);
     width: 0;
     height: 0;
     border-left: 5px solid transparent;
-border-top: 5px solid rgba(0, 0, 0, 0.9);
+    border-right: 5px solid transparent;
+    border-top: 5px solid rgba(0, 0, 0, 0.9);
   }
 
   .reschedule-preview {

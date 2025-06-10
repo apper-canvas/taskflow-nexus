@@ -67,12 +67,12 @@ export default {
           800: '#1e293b',
           900: '#0f172a'
         }
-      },
+},
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
         heading: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui']
       },
-boxShadow: {
+      boxShadow: {
         'card': '0 4px 8px rgba(0, 0, 0, 0.1)',
         'card-hover': '0 8px 16px rgba(0, 0, 0, 0.15)',
         'modal': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
@@ -89,11 +89,11 @@ boxShadow: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' }
         },
-        slideIn: {
+slideIn: {
           '0%': { transform: 'translateX(-10px)', opacity: '0' },
           '100%': { transform: 'translateX(0)', opacity: '1' }
         },
-zoomIn: {
+        zoomIn: {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' }
         }
@@ -107,8 +107,11 @@ zoomIn: {
         'tooltip': '50',
         'milestone': '25',
         'preview': '30'
-      },
+},
       clipPath: {
         'diamond': 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
       }
-    },
+    }
+  },
+  plugins: []
+};
