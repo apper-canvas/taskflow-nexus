@@ -1,0 +1,145 @@
+[
+  {
+    "id": "task_1",
+    "projectId": "project_1",
+    "title": "Create wireframes for homepage",
+    "description": "Design low-fidelity wireframes for the new homepage layout including hero section, features, and call-to-action areas",
+    "status": "done",
+    "priority": "high",
+    "dueDate": "2024-03-15T00:00:00Z",
+    "createdAt": "2024-01-15T09:30:00Z",
+    "completedAt": "2024-02-20T14:22:00Z"
+  },
+  {
+    "id": "task_2",
+    "projectId": "project_1",
+    "title": "Research competitor websites",
+    "description": "Analyze top 5 competitor websites for design patterns, user flows, and feature sets",
+    "status": "done",
+    "priority": "medium",
+    "dueDate": "2024-03-10T00:00:00Z",
+    "createdAt": "2024-01-15T10:00:00Z",
+    "completedAt": "2024-02-18T11:15:00Z"
+  },
+  {
+    "id": "task_3",
+    "projectId": "project_1",
+    "title": "Develop responsive CSS framework",
+    "description": "Build custom CSS framework for responsive design across all device sizes",
+    "status": "in-progress",
+    "priority": "high",
+    "dueDate": "2024-03-25T00:00:00Z",
+    "createdAt": "2024-02-01T08:45:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_4",
+    "projectId": "project_1",
+    "title": "Content strategy and copywriting",
+    "description": "Write compelling copy for all website sections and create content guidelines",
+    "status": "todo",
+    "priority": "medium",
+    "dueDate": "2024-03-30T00:00:00Z",
+    "createdAt": "2024-02-05T15:20:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_5",
+    "projectId": "project_2",
+    "title": "Set up development environment",
+    "description": "Configure React Native development environment with necessary tools and dependencies",
+    "status": "done",
+    "priority": "high",
+    "dueDate": "2024-02-15T00:00:00Z",
+    "createdAt": "2024-01-20T14:45:00Z",
+    "completedAt": "2024-02-12T09:30:00Z"
+  },
+  {
+    "id": "task_6",
+    "projectId": "project_2",
+    "title": "Design app navigation structure",
+    "description": "Create information architecture and navigation flow for optimal user experience",
+    "status": "in-progress",
+    "priority": "high",
+    "dueDate": "2024-03-01T00:00:00Z",
+    "createdAt": "2024-02-10T11:20:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_7",
+    "projectId": "project_2",
+    "title": "Implement user authentication",
+    "description": "Build secure login/signup system with email verification and password reset",
+    "status": "todo",
+    "priority": "high",
+    "dueDate": "2024-03-20T00:00:00Z",
+    "createdAt": "2024-02-15T13:10:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_8",
+    "projectId": "project_2",
+    "title": "Create onboarding screens",
+    "description": "Design and develop user onboarding flow with tutorial screens and feature highlights",
+    "status": "todo",
+    "priority": "medium",
+    "dueDate": "2024-03-25T00:00:00Z",
+    "createdAt": "2024-02-20T10:30:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_9",
+    "projectId": "project_3",
+    "title": "Social media content calendar",
+    "description": "Plan and schedule 3 months of social media posts across all platforms",
+    "status": "in-progress",
+    "priority": "medium",
+    "dueDate": "2024-03-05T00:00:00Z",
+    "createdAt": "2024-02-01T12:00:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_10",
+    "projectId": "project_3",
+    "title": "Email marketing automation",
+    "description": "Set up automated email sequences for lead nurturing and customer retention",
+    "status": "todo",
+    "priority": "high",
+    "dueDate": "2024-03-15T00:00:00Z",
+    "createdAt": "2024-02-05T09:15:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_11",
+    "projectId": "project_3",
+    "title": "Google Ads campaign setup",
+    "description": "Create and launch targeted Google Ads campaigns for key product categories",
+    "status": "todo",
+    "priority": "high",
+    "dueDate": "2024-03-10T00:00:00Z",
+    "createdAt": "2024-02-08T14:45:00Z",
+    "completedAt": null
+  },
+  {
+    "id": "task_12",
+    "projectId": "project_4",
+    "title": "Beta user recruitment",
+    "description": "Recruit and onboard 50 beta users for product testing and feedback collection",
+    "status": "done",
+    "priority": "high",
+    "dueDate": "2024-02-20T00:00:00Z",
+    "createdAt": "2024-02-10T16:50:00Z",
+    "completedAt": "2024-02-25T13:20:00Z"
+  },
+  {
+    "id": "task_13",
+    "projectId": "project_4",
+    "title": "Feedback analysis and reporting",
+    "description": "Analyze beta user feedback and create comprehensive report with recommendations",
+    "status": "done",
+    "priority": "medium",
+    "dueDate": "2024-03-01T00:00:00Z",
+    "createdAt": "2024-02-15T11:30:00Z",
+    "completedAt": "2024-03-02T16:45:00Z"
+  }
+]
