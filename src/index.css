@@ -34,10 +34,50 @@ body {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-  
-  .drag-preview {
+.drag-preview {
     transform: rotate(3deg);
     opacity: 0.8;
+  }
+
+  .timeline-container {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .timeline-grid {
+    background-image: linear-gradient(to right, #e2e8f0 1px, transparent 1px);
+    background-size: 60px 100%;
+  }
+
+  .timeline-task {
+    transition: all 0.2s ease;
+    cursor: grab;
+  }
+
+  .timeline-task:hover {
+    transform: translateY(-2px);
+    z-index: 10;
+  }
+
+  .timeline-task.dragging {
+    cursor: grabbing;
+    transform: rotate(2deg);
+    opacity: 0.8;
+    z-index: 20;
+  }
+
+  .timeline-resize-handle {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .timeline-task:hover .timeline-resize-handle {
+    opacity: 1;
+  }
+
+  .zoom-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 

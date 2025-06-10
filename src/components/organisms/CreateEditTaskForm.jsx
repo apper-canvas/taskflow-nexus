@@ -23,39 +23,50 @@ const CreateEditTaskForm = ({ task, setTask, handleSubmit, onClose, projectColum
                 onChange={(e) => setTask(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Optional task description"
             />
-            <div className="grid grid-cols-2 gap-4">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
-                    label="Priority"
-                    id="taskPriority"
-                    type="select"
-                    value={task.priority}
-                    onChange={(e) => setTask(prev => ({ ...prev, priority: e.target.value }))}
-                >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                </FormField>
+                    label="Start Date"
+                    type="date"
+                    value={task.startDate}
+                    onChange={(e) => setTask(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full"
+                />
+
                 <FormField
-                    label="Status"
-                    id="taskStatus"
-                    type="select"
-                    value={task.status}
-                    onChange={(e) => setTask(prev => ({ ...prev, status: e.target.value }))}
-                >
-                    {projectColumns.map(column => (
-                        <option key={column.id} value={column.id}>
-                            {column.name}
-                        </option>
-                    ))}
-                </FormField>
+                    label="Due Date"
+                    type="date"
+                    value={task.dueDate}
+                    onChange={(e) => setTask(prev => ({ ...prev, dueDate: e.target.value }))}
+                    className="w-full"
+                />
             </div>
+
             <FormField
-                label="Due Date"
-                id="taskDueDate"
-                type="date"
-                value={task.dueDate}
-                onChange={(e) => setTask(prev => ({ ...prev, dueDate: e.target.value }))}
-            />
+                label="Status"
+                type="select"
+                value={task.status}
+                onChange={(e) => setTask(prev => ({ ...prev, status: e.target.value }))}
+                className="w-full"
+            >
+                {projectColumns.map(column => (
+                    <option key={column.id} value={column.id}>
+                        {column.name}
+                    </option>
+                ))}
+            </FormField>
+
+            <FormField
+                label="Priority"
+                type="select"
+                value={task.priority}
+                onChange={(e) => setTask(prev => ({ ...prev, priority: e.target.value }))}
+                className="w-full"
+            >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+</FormField>
+
             <div className="flex space-x-3 pt-4">
                 <Button
                     type="button"

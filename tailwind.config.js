@@ -72,10 +72,31 @@ export default {
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
         heading: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui']
       },
-      boxShadow: {
+boxShadow: {
         'card': '0 4px 8px rgba(0, 0, 0, 0.1)',
         'card-hover': '0 8px 16px rgba(0, 0, 0, 0.15)',
-        'modal': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        'modal': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        'timeline': '0 2px 4px rgba(0, 0, 0, 0.1)',
+        'timeline-hover': '0 4px 8px rgba(0, 0, 0, 0.15)'
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease-in-out',
+        'slide-in': 'slideIn 0.3s ease-out',
+        'zoom-in': 'zoomIn 0.2s ease-out'
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' }
+        },
+        slideIn: {
+          '0%': { transform: 'translateX(-10px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' }
+        },
+        zoomIn: {
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' }
+        }
       }
     },
   },

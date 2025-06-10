@@ -44,12 +44,22 @@ class TaskService {
     return { ...task };
   }
 
-  async update(id, updates) {
+async update(id, updates) {
     await delay(300);
     const index = this.tasks.findIndex(t => t.id === id);
     if (index === -1) {
       throw new Error('Task not found');
     }
+
+    // Validate date ranges if both start and due dates are provided
+    if (updates.startDate && updates.dueDate) {
+      const startDate = new Date(updates.startDate);
+      const dueDate = new Date(updates.dueDate);
+      if (startDate > dueDate) {
+        throw new Error('Start date cannot be after due date');
+      }
+    }
+
     this.tasks[index] = { ...this.tasks[index], ...updates };
     this.saveToStorage();
     return { ...this.tasks[index] };
@@ -63,8 +73,34 @@ class TaskService {
     }
     this.tasks.splice(index, 1);
     this.saveToStorage();
+this.saveToStorage();
     return true;
   }
-}
 
+  async updateTaskDates(id, startDate, dueDate) {
+    await delay(250);
+    const index = this.tasks.findIndex(t => t.id === id);
+    if (index === -1) {
+      throw new Error('Task not found');
+    }
+
+    // Validate date range
+    if (startDate && dueDate) {
+      const start = new Date(startDate);
+      const due = new Date(dueDate);
+      if (start > due) {
+        throw new Error('Start date cannot be after due date');
+      }
+    }
+
+    this.tasks[index] = {
+      ...this.tasks[index],
+      startDate: startDate || this.tasks[index].startDate,
+      dueDate: dueDate || this.tasks[index].dueDate
+    };
+    
+    this.saveToStorage();
+    return { ...this.tasks[index] };
+  }
+}
 export default new TaskService();
