@@ -17,6 +17,7 @@ const ProjectList = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [showCreateProject, setShowCreateProject] = useState(false);
+    const [creating, setCreating] = useState(false);
     const [newProject, setNewProject] = useState({ name: '', description: '' });
 
     useEffect(() => {
@@ -26,7 +27,7 @@ const ProjectList = () => {
     const loadProjects = async () => {
         setLoading(true);
         setError(null);
-try {
+        try {
             const result = await projectService.getAll();
             const activeProjects = result.filter(p => !p.archived);
 
@@ -64,6 +65,9 @@ try {
             return;
         }
 
+        if (creating) return; // Prevent double submission
+
+        setCreating(true);
         try {
             const project = {
                 name: newProject.name.trim(),
@@ -74,13 +78,19 @@ try {
                     { id: 'done', name: 'Done', position: 2, color: '#10B981' }
                 ]
             };
-const created = await projectService.create(project);
-            setProjects(prev => [...prev, { ...created, taskCount: 0, completedTasks: 0, progress: 0 }]);
-            setNewProject({ name: '', description: '' });
-            setShowCreateProject(false);
-            toast.success('Project created successfully');
+            
+            const created = await projectService.create(project);
+            if (created) {
+                setProjects(prev => [...prev, { ...created, taskCount: 0, completedTasks: 0, progress: 0 }]);
+                setNewProject({ name: '', description: '' });
+                setShowCreateProject(false);
+                toast.success('Project created successfully');
+            }
         } catch (error) {
-            toast.error('Failed to create project');
+            console.error('Error creating project:', error);
+            toast.error(error.message || 'Failed to create project');
+        } finally {
+            setCreating(false);
         }
     };
 
@@ -137,11 +147,12 @@ const created = await projectService.create(project);
                 onClose={() => setShowCreateProject(false)}
                 title="Create New Project"
             >
-                <CreateProjectForm
+<CreateProjectForm
                     newProject={newProject}
                     setNewProject={setNewProject}
                     handleSubmit={handleCreateProject}
                     onClose={() => setShowCreateProject(false)}
+                    loading={creating}
                 />
             </Modal>
         </div>
